@@ -53,8 +53,10 @@ jobs:
 
       - name: SEALED RUN 1 — the offline workload must show ZERO egress (CLEAN)
         run: |
+          mkdir -p out
           chmod +x harness/run-namespace.sh
           sudo ./harness/run-namespace.sh offline out
+          sudo chown -R "$(id -u):$(id -g)" out   # the harness ran as root; reclaim out/
           node cli.mjs out/offline.pcap --manifest harness/manifest.json \
             --workload offline-grow --capturedBy "tcpdump on agp-host veth" \
             --assert CLEAN | tee out/offline.report.json
@@ -62,6 +64,7 @@ jobs:
       - name: SEALED RUN 2 — the phone-home control must be CAUGHT (0 false-pass)
         run: |
           sudo ./harness/run-namespace.sh phonehome out
+          sudo chown -R "$(id -u):$(id -g)" out
           node cli.mjs out/phonehome.pcap --manifest harness/manifest.json \
             --workload phone-home --capturedBy "tcpdump on agp-host veth" \
             --assert CAUGHT | tee out/phonehome.report.json
