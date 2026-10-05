@@ -14,21 +14,28 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 let kernel = readFileSync(join(HERE, "egress.mjs"), "utf8");
 kernel = kernel.replace(/^#!.*\r?\n/, "").replace(/\bexport\s+/g, "");
 
-// 2) the committed fixtures, base64-encoded, + expected.json + the manifest
-const fxDir = join(HERE, "fixtures");
-const expected = JSON.parse(readFileSync(join(fxDir, "expected.json"), "utf8"));
-const fixtures = {};
-for (const name of readdirSync(fxDir)) {
-  if (!name.endsWith(".pcap")) continue;
-  fixtures[name] = readFileSync(join(fxDir, name)).toString("base64");
+// 2) inline each proof set's pcaps (base64) + its expected.json + manifest
+function loadSet(dir) {
+  const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8"));
+  const fixtures = {};
+  for (const name of readdirSync(dir)) {
+    if (name.endsWith(".pcap")) fixtures[name] = readFileSync(join(dir, name)).toString("base64");
+  }
+  return { fixtures, expected };
 }
+const synthetic = loadSet(join(HERE, "fixtures"));
+const live = loadSet(join(HERE, "fixtures", "live"));
 
 // 3) inject into the template at raw-text markers (no string escaping of code)
 let html = readFileSync(join(HERE, "page.template.html"), "utf8");
 html = html
   .replace("/*KERNEL*/", kernel)
-  .replace("/*FIXTURES*/", JSON.stringify(fixtures))
-  .replace("/*EXPECTED*/", JSON.stringify(expected));
+  .replace("/*FIXTURES*/", JSON.stringify(synthetic.fixtures))
+  .replace("/*EXPECTED*/", JSON.stringify(synthetic.expected))
+  .replace("/*LIVE_FIXTURES*/", JSON.stringify(live.fixtures))
+  .replace("/*LIVE_EXPECTED*/", JSON.stringify(live.expected));
 
 writeFileSync(join(HERE, "index.html"), html);
-console.log(`built index.html (kernel ${kernel.length}B, ${Object.keys(fixtures).length} fixtures inlined)`);
+console.log(
+  `built index.html (kernel ${kernel.length}B, ${Object.keys(synthetic.fixtures).length} synthetic + ${Object.keys(live.fixtures).length} live captures inlined)`
+);

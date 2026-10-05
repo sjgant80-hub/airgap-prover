@@ -128,6 +128,13 @@
     <div class="chk" id="chk"></div>
   </section>
 
+  <section>
+    <div class="eyebrow">the real run — host-observed on CI, not synthetic</div>
+    <h2>Captured from below, on the Linux runner</h2>
+    <p class="dim" style="margin-top:6px">These are the <b>actual pcaps</b> tcpdump recorded on the host side of the veth during the sealed namespace run — the offline workload and the phone-home control. The same kernel re-derives their verdicts here, in your browser. <a id="livelink" href="https://github.com/sjgant80-hub/airgap-prover/actions" target="_blank" rel="noopener">the run</a>.</p>
+    <div class="cards" id="livecards"></div>
+  </section>
+
   <section class="tin">
     <div class="eyebrow">honest threat model — on the tin</div>
     <h2>What this sees, and what it cannot</h2>
@@ -472,7 +479,8 @@ function ipToString(version, a) {
 
 const FIXTURES = {"declared-peer.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACQoJCQEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJ/g==","offline.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAngAAD7A/FTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACan+AAUE8VNlAAAAADYAAAA2AAAAAgAAAAACAgAAAAABht1gAAAAAAAGQP0AAAAAAAAAAAAAAAAAAAn9AAAAAAAAAAAAAAAAAAABBfFTZQAAAAA2AAAANgAAAAIAAAAAAgIAAAAAAYbdYAAAAAAABkD9AAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAQ==","phonehome.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAkICAgIA/FTZQAAAAA2AAAANgAAAAIAAAAAAgIAAAAAAYbdYAAAAAAABkD9AAAAAAAAAAAAAAAAAAAJIAFIYEhgAAAAAAAAAACIiA=="};
 const EXPECTED = {"offline.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"0:0:0:0:0:0:0:1","version":6,"class":"local","count":1},{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"169.254.0.5","version":4,"class":"link-local","count":1},{"dst":"224.0.0.251","version":4,"class":"multicast","count":1},{"dst":"fd00:0:0:0:0:0:0:1","version":6,"class":"declared-peer","count":1}],"totalFrames":6,"ipFrames":6,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"phonehome.pcap":{"verdict":"CAUGHT","egressCount":2,"egressFlows":[{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"totalFrames":4,"ipFrames":4,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"declared-peer.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"10.9.9.254","version":4,"class":"declared-peer","count":1}],"totalFrames":2,"ipFrames":2,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"__manifest":{"declaredPeers":["10.9.9.0/24","fd00::/8"]}};
-const MANIFEST = EXPECTED.__manifest || { declaredPeers: [] };
+const LIVE_FIXTURES = {"offline.pcap":"1MOyoQIABAAAAAAAAAAAAAAABAABAAAAneTDatSlDgBWAAAAVgAAADMz/yRWgKIHJyRWgIbdYAAAAAAgOv8AAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAB/yRWgIcAIPoAAAAA/oAAAAAAAACgByf//iRWgA4BpDc5xfvWnuTDauHzAQBaAAAAWgAAADMzAAAAFqIHJyRWgIbdYAAAAAAkAAEAAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwAY5gAAAAEEAAAA/wIAAAAAAAAAAAAB/yRWgJ7kw2rZRQQAVgAAAFYAAAAzM//S0Pq+Uw/S0PqG3WAAAAAAIDr/AAAAAAAAAAAAAAAAAAAAAP8CAAAAAAAAAAAAAf/S0PqHAOn0AAAAAP6AAAAAAAAAvFMP//7S0PoOAXMdCUiZ1p7kw2rWAw8AWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAAB/oAAAAAAAACgByf//iRWgP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8A/bgAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCe5MNq7gMPAEYAAABGAAAAMzMAAAACogcnJFaAht1gAAAAABA6//6AAAAAAAAAoAcn//4kVoD/AgAAAAAAAAAAAAAAAAAChQA/1gAAAAABAaIHJyRWgJ/kw2rCowQAWgAAAFoAAAAzMwAAABa+Uw/S0PqG3WAAAAAAJAAB/oAAAAAAAAC8Uw///tLQ+v8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8AAxwAAAABBAAAAP8CAAAAAAAAAAAAAf/S0Pqf5MNq2KMEAEYAAABGAAAAMzMAAAACvlMP0tD6ht1gAAAAABA6//6AAAAAAAAAvFMP//7S0Pr/AgAAAAAAAAAAAAAAAAAChQBA7QAAAAABAb5TD9LQ+p/kw2pMjwgAWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAAB/oAAAAAAAACgByf//iRWgP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8A/bgAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCf5MNqBMQJAFoAAABaAAAAMzMAAAAWvlMP0tD6ht1gAAAAACQAAf6AAAAAAAAAvFMP//7S0Pr/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAAMcAAAAAQQAAAD/AgAAAAAAAAAAAAH/0tD6","phonehome.pcap":"1MOyoQIABAAAAAAAAAAAAAAABAABAAAAoOTDagzoAQBaAAAAWgAAADMzAAAAFnroe4WN2YbdYAAAAAAkAAEAAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwDhKwAAAAEEAAAA/wIAAAAAAAAAAAAB/4WN2aDkw2qbIgIAWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAABAAAAAAAAAAAAAAAAAAAAAP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8AGOYAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCg5MNqF90KAFYAAABWAAAAMzP/JFaAogcnJFaAht1gAAAAACA6/wAAAAAAAAAAAAAAAAAAAAD/AgAAAAAAAAAAAAH/JFaAhwD2zgAAAAD+gAAAAAAAAKAHJ//+JFaADgGGnDA9TSWg5MNqJ8UOAFYAAABWAAAAMzP/hY3Zeuh7hY3Zht1gAAAAACA6/wAAAAAAAAAAAAAAAAAAAAD/AgAAAAAAAAAAAAH/hY3ZhwCHowAAAAD+gAAAAAAAAHjoe//+hY3ZDgHQ36nmXA6h5MNq59MBAEoAAABKAAAAogcnJFaAeuh7hY3ZCABFAAA8naFAAEAGegAKCQkCCAgICNtUAbsyrQzzAAAAAKAC+vAjSQAAAgQFtAQCCAqN5ZzpAAAAAAEDAwqh5MNqSTsLAFoAAABaAAAAMzMAAAAWogcnJFaAht1gAAAAACQAAf6AAAAAAAAAoAcn//4kVoD/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAP24AAAAAQQAAAD/AgAAAAAAAAAAAAH/JFaAoeTDamQ7CwBGAAAARgAAADMzAAAAAqIHJyRWgIbdYAAAAAAQOv/+gAAAAAAAAKAHJ//+JFaA/wIAAAAAAAAAAAAAAAAAAoUAP9YAAAAAAQGiByckVoCh5MNqFSMPAFoAAABaAAAAMzMAAAAWeuh7hY3Zht1gAAAAACQAAf6AAAAAAAAAeOh7//6Fjdn/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAGFjAAAAAQQAAAD/AgAAAAAAAAAAAAH/hY3ZoeTDaiojDwBGAAAARgAAADMzAAAAAnroe4WN2YbdYAAAAAAQOv/+gAAAAAAAAHjoe//+hY3Z/wIAAAAAAAAAAAAAAAAAAoUAdp8AAAAAAQF66HuFjdmi5MNq0dQBAEoAAABKAAAAogcnJFaAeuh7hY3ZCABFAAA8naJAAEAGef8KCQkCCAgICNtUAbsyrQzzAAAAAKAC+vAjSQAAAgQFtAQCCAqN5aDSAAAAAAEDAwqi5MNqq0UEAFoAAABaAAAAMzMAAAAWeuh7hY3Zht1gAAAAACQAAf6AAAAAAAAAeOh7//6Fjdn/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAGFjAAAAAQQAAAD/AgAAAAAAAAAAAAH/hY3ZouTDat+wBwBaAAAAWgAAADMzAAAAFqIHJyRWgIbdYAAAAAAkAAH+gAAAAAAAAKAHJ//+JFaA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwD9uAAAAAEEAAAA/wIAAAAAAAAAAAAB/yRWgKPkw2p6MgIASgAAAEoAAACiByckVoB66HuFjdkIAEUAADydo0AAQAZ5/goJCQIICAgI21QBuzKtDPMAAAAAoAL68CNJAAACBAW0BAIICo3lpNIAAAAAAQMDCg=="};
+const LIVE_EXPECTED = {"__manifest":{"declaredPeers":["10.9.9.0/24"]},"__source":"real host-observed captures, CI run 37352056238 (ip netns + tcpdump, ubuntu-latest)","offline.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"ff02:0:0:0:0:0:0:16","version":6,"class":"multicast","count":5},{"dst":"ff02:0:0:0:0:0:0:2","version":6,"class":"multicast","count":2},{"dst":"ff02:0:0:0:0:1:ff24:5680","version":6,"class":"multicast","count":1},{"dst":"ff02:0:0:0:0:1:ffd2:d0fa","version":6,"class":"multicast","count":1}],"totalFrames":9,"ipFrames":9,"declaredPeers":["10.9.9.0/24"]},"phonehome.pcap":{"verdict":"CAUGHT","egressCount":1,"egressFlows":[{"dst":"8.8.8.8","version":4,"class":"egress","count":3}],"observed":[{"dst":"8.8.8.8","version":4,"class":"egress","count":3},{"dst":"ff02:0:0:0:0:0:0:16","version":6,"class":"multicast","count":6},{"dst":"ff02:0:0:0:0:0:0:2","version":6,"class":"multicast","count":2},{"dst":"ff02:0:0:0:0:1:ff24:5680","version":6,"class":"multicast","count":1},{"dst":"ff02:0:0:0:0:1:ff85:8dd9","version":6,"class":"multicast","count":1}],"totalFrames":13,"ipFrames":13,"declaredPeers":["10.9.9.0/24"]}};
 
 // theme toggle (defaults to OS; click flips and persists for this viewer)
 const root = document.documentElement;
@@ -496,14 +504,15 @@ async function sha256Hex(bytes) {
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function render() {
-  const cards = document.getElementById("cards");
+async function renderSet(fixtures, expected, mountId) {
+  const manifest = expected.__manifest || { declaredPeers: [] };
+  const cards = document.getElementById(mountId);
   cards.textContent = "";
   let allMatch = true;
-  for (const name of Object.keys(FIXTURES)) {
-    const bytes = b64ToBytes(FIXTURES[name]);
-    const r = witnessEgress(bytes, MANIFEST);          // <- the real kernel
-    const want = EXPECTED[name];
+  for (const name of Object.keys(fixtures)) {
+    const bytes = b64ToBytes(fixtures[name]);
+    const r = witnessEgress(bytes, manifest);          // <- the real kernel
+    const want = expected[name];
     const match = want && JSON.stringify(r) === JSON.stringify(want);
     if (!match) allMatch = false;
     const hash = await sha256Hex(bytes);
@@ -525,17 +534,23 @@ async function render() {
   return allMatch;
 }
 
+async function renderAll() {
+  const a = await renderSet(FIXTURES, EXPECTED, "cards");
+  const b = await renderSet(LIVE_FIXTURES, LIVE_EXPECTED, "livecards");
+  return a && b;
+}
+
 document.getElementById("rerun").addEventListener("click", async () => {
   const chk = document.getElementById("chk");
   chk.textContent = "re-deriving from the pinned bytes…";
-  const ok = await render();
+  const ok = await renderAll();
   chk.textContent = ok
     ? "✓ re-derived byte-identically — every verdict matches the committed proof."
     : "✗ drift detected — a verdict did not match the committed proof.";
   chk.style.color = ok ? "var(--green)" : "var(--red)";
 });
 
-render();
+renderAll();
 </script>
 </body>
 </html>

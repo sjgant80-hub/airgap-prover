@@ -5,7 +5,7 @@
   "kind": "organCard",
   "suit": "trust-rail",
   "type": "Witness / Egress",
-  "rarity": "provisional",
+  "rarity": "rare",
   "sigil": {
     "glyph": "⊘→∅",
     "motif": "a sealed ring with a severed outbound line",
@@ -22,8 +22,8 @@
   "earnedBy": {
     "tests": "48/48",
     "witness": "CLEAN (97/109 killed, 12 reviewed-equivalent)",
-    "rerunRail": "fixtures re-derive to expected.json byte-identically",
-    "liveMeasure": "pending first CI run (offline CLEAN + phone-home CAUGHT)"
+    "rerunRail": "5 pinned captures (3 synthetic + 2 real) re-derive to expected.json byte-identically",
+    "liveMeasure": "SEALED on CI run 37352056238: offline CLEAN (egress 0), phone-home CAUGHT (egress 8.8.8.8), re-derives identically"
   },
   "honestLimit": "A kernel/firmware implant below the capture point is not observable here — L3/L2 are the next layers down, adopt-and-prove.",
   "credit": {

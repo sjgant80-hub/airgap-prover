@@ -1,0 +1,93 @@
+{
+ "__manifest": {
+  "declaredPeers": [
+   "10.9.9.0/24"
+  ]
+ },
+ "__source": "real host-observed captures, CI run 37352056238 (ip netns + tcpdump, ubuntu-latest)",
+ "offline.pcap": {
+  "verdict": "CLEAN",
+  "egressCount": 0,
+  "egressFlows": [],
+  "observed": [
+   {
+    "dst": "ff02:0:0:0:0:0:0:16",
+    "version": 6,
+    "class": "multicast",
+    "count": 5
+   },
+   {
+    "dst": "ff02:0:0:0:0:0:0:2",
+    "version": 6,
+    "class": "multicast",
+    "count": 2
+   },
+   {
+    "dst": "ff02:0:0:0:0:1:ff24:5680",
+    "version": 6,
+    "class": "multicast",
+    "count": 1
+   },
+   {
+    "dst": "ff02:0:0:0:0:1:ffd2:d0fa",
+    "version": 6,
+    "class": "multicast",
+    "count": 1
+   }
+  ],
+  "totalFrames": 9,
+  "ipFrames": 9,
+  "declaredPeers": [
+   "10.9.9.0/24"
+  ]
+ },
+ "phonehome.pcap": {
+  "verdict": "CAUGHT",
+  "egressCount": 1,
+  "egressFlows": [
+   {
+    "dst": "8.8.8.8",
+    "version": 4,
+    "class": "egress",
+    "count": 3
+   }
+  ],
+  "observed": [
+   {
+    "dst": "8.8.8.8",
+    "version": 4,
+    "class": "egress",
+    "count": 3
+   },
+   {
+    "dst": "ff02:0:0:0:0:0:0:16",
+    "version": 6,
+    "class": "multicast",
+    "count": 6
+   },
+   {
+    "dst": "ff02:0:0:0:0:0:0:2",
+    "version": 6,
+    "class": "multicast",
+    "count": 2
+   },
+   {
+    "dst": "ff02:0:0:0:0:1:ff24:5680",
+    "version": 6,
+    "class": "multicast",
+    "count": 1
+   },
+   {
+    "dst": "ff02:0:0:0:0:1:ff85:8dd9",
+    "version": 6,
+    "class": "multicast",
+    "count": 1
+   }
+  ],
+  "totalFrames": 13,
+  "ipFrames": 13,
+  "declaredPeers": [
+   "10.9.9.0/24"
+  ]
+ }
+}

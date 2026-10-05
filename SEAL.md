@@ -35,10 +35,26 @@ point defeats it. This is "observed egress zero under a stated threat model", no
 
 ## Measurement (commit 2) — recorded after the live CI run
 
-<!-- filled in by commit 2 from the actual live-measure job -->
-- Status: PENDING first CI run.
-- CI run: <url>
-- Sealed run 1 (offline): <CLEAN|CAUGHT>
-- Sealed run 2 (phone-home): <CLEAN|CAUGHT>
-- Re-derivation: <identical|drift>
-- Real captures committed as fixtures: <names>
+Measured on the GitHub Actions runner (ubuntu-latest, `ip netns` + `tcpdump`,
+Node 20). All three predictions held.
+
+- Status: **MEASURED — all three predictions held.**
+- CI run: https://github.com/sjgant80-hub/airgap-prover/actions/runs/37352056238 (proof-of-play, green)
+- **Sealed run 1 (offline-grow): CLEAN** — 930 bytes captured, egress 0. The only
+  traffic observed was IPv6 link-scoped multicast (MLD / router-solicitation / DAD:
+  ff02::16, ff02::2, ff02::1:ff…), all classified multicast → allowed. The workload
+  made no network calls. `OK: verdict CLEAN == expected CLEAN`.
+- **Sealed run 2 (phone-home): CAUGHT** — 1306 bytes captured, egress 1 → **8.8.8.8**.
+  The SYN was emitted onto the veth and caught at the boundary; it timed out and never
+  reached Google (host forwards/NATs nothing). `OK: verdict CAUGHT == expected CAUGHT`.
+  0 false-pass.
+- **Re-derivation: identical.** Both captures re-derive to the same verdict on repeat
+  kernel runs on the runner, re-derive again locally on Windows (Node v25), and again
+  in-browser on the live page. Cross-platform, byte-identical.
+- **Real captures committed as fixtures:** `fixtures/live/offline.pcap`,
+  `fixtures/live/phonehome.pcap` (+ `fixtures/live/expected.json`), so the exact
+  host-observed bytes re-derive forever via `rerun.mjs` and the live page's re-run button.
+
+Honest one-line: this proves **observed egress zero at the host / network-namespace
+boundary over the run** (and catches the one that tried). It does **not** see a
+kernel/firmware implant below that boundary — L3/L2 are the next layers down.

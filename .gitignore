@@ -2,3 +2,4 @@ out/
 *.witnessbak
 node_modules/
 verdict.txt
+dl/

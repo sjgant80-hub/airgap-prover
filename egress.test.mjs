@@ -319,15 +319,15 @@ test("buildReport defaults absent provenance to null, never undefined", () => {
 });
 
 // ---- the committed fixtures re-derive (the re-run rail, in-process) ---------
-test("committed fixtures re-derive to committed expected.json byte-identically", () => {
+test("every pinned capture re-derives to its expected.json byte-identically", () => {
   const here = dirname(fileURLToPath(import.meta.url));
-  const fx = join(here, "fixtures");
-  const expected = JSON.parse(readFileSync(join(fx, "expected.json"), "utf8"));
-  const manifest = expected.__manifest;
-  for (const [name, want] of Object.entries(expected)) {
-    if (name.startsWith("__")) continue;
-    const buf = readFileSync(join(fx, name));
-    const got = witnessEgress(buf, manifest);
-    assert.deepEqual(got, want, `${name} drifted from expected.json`);
+  for (const dir of [join(here, "fixtures"), join(here, "fixtures", "live")]) {
+    const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8"));
+    const manifest = expected.__manifest;
+    for (const [name, want] of Object.entries(expected)) {
+      if (name.startsWith("__")) continue;
+      const got = witnessEgress(readFileSync(join(dir, name)), manifest);
+      assert.deepEqual(got, want, `${name} in ${dir} drifted from expected.json`);
+    }
   }
 });

@@ -9,6 +9,11 @@ was zero — or catch the one that phoned home.
 The verdict kernel on the live page is the **exact kernel** CI mutation-gates: press *re-run* and
 it re-derives the verdicts from the pinned captures in your browser.
 
+> **Sealed result** ([run](https://github.com/sjgant80-hub/airgap-prover/actions/runs/37352056238)):
+> offline workload → **CLEAN** (egress 0), phone-home control → **CAUGHT** (egress → 8.8.8.8,
+> never reached Google), both captures re-derive byte-identically on CI, locally, and in the
+> browser. See [`SEAL.md`](SEAL.md).
+
 ---
 
 ## What it proves (and what it can't)
