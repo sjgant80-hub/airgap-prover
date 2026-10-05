@@ -1,0 +1,62 @@
+[
+ {
+  "mutation": ">= → >",
+  "snippet": "const take = remaining >= 8 ? 8 : remaining;",
+  "reason": "remaining>=8?8:remaining — at remaining===8 both operators yield 8; the two branches agree on every input."
+ },
+ {
+  "mutation": "<= → <",
+  "snippet": "if (remaining <= 0) break;",
+  "reason": "remaining<=0 break — the two differ only at remaining===0, where take becomes 0 so the mask is 0 and the extra byte comparison (0===0) is a no-op; identical result."
+ },
+ {
+  "mutation": "> → >=",
+  "snippet": "if (o + 4 > frame.length) return null;",
+  "reason": "VLAN tag guard o+4>len — differs only when o+4===len, i.e. the inner ethertype is the last two bytes with no IP payload after it; both paths return null."
+ },
+ {
+  "mutation": "> → >=",
+  "snippet": "x.dst < y.dst ? -1 : x.dst > y.dst ? 1 : x.version - y.version",
+  "reason": "sort tiebreak — observed destinations are unique (keyed by version|text), so the > branch and the x.version-y.version tiebreak are only reached for equal dst, which never occurs."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "if (frame.length < 14) return null;",
+  "reason": "ethPayload len<14 — a 14-byte Ethernet frame carries no IP payload; both < and <= return null."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "if (frame.length < 16) return null;",
+  "reason": "sllPayload len<16 — a 16-byte SLL frame is header-only with no IP; both return null."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "if (ip.length < 1) return null;",
+  "reason": "ipDst len<1 — a 0/1-byte IP slice can never be a valid v4/v6 header (needs 20/40 bytes); both return null."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "for (let i = 0; i < a.length; i++) {",
+  "reason": "inCidr byte loop — the remaining<=0 break stops before the extra iteration can read out of bounds; identical result."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "x.dst < y.dst ? -1 : x.dst > y.dst ? 1 : x.version - y.version",
+  "reason": "sort by dst string — observed dst strings are distinct, so < and <= order them identically; the equal-key path is unreachable."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "for (let i = 0; i < 16; i++) if (a[i] !== want[i]) return false;",
+  "reason": "isV6 compare loop — the extra iteration compares undefined===undefined (false), so no spurious early return; identical result."
+ },
+ {
+  "mutation": "< → <=",
+  "snippet": "for (let i = 0; i < 8; i++) {",
+  "reason": "v6 group loop — the extra iteration writes out[16]/out[17] on a 16-byte array (silently ignored); the parsed address is unchanged."
+ },
+ {
+  "mutation": "+ 1 → - 1",
+  "snippet": "while (off + 16 <= u8.length) {",
+  "reason": "while off+16 guard — the end>u8.length check rejects the out-of-bounds record the shifted offset would admit; the same records are parsed."
+ }
+]

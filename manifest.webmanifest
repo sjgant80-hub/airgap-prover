@@ -1,0 +1,16 @@
+{
+  "name": "airgap-prover",
+  "short_name": "airgap-prover",
+  "description": "Observed egress zero, measured from below the guest — a re-runnable proof.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0a0c11",
+  "theme_color": "#0a0c11",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a0c11'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%2357d0e0' stroke-width='4'/%3E%3Cline x1='20' y1='44' x2='44' y2='20' stroke='%23e77b6b' stroke-width='4'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

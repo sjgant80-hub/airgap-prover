@@ -1,0 +1,38 @@
+{
+  "_comment": "FallWorld Deck card for airgap-prover. Authored here to be vendored into the Deck later (not pushed into the fallworld repo from this build — another organ is being wired there). Rarity is earned from the sealed result; finalise after commit 2.",
+  "id": "airgap-prover",
+  "name": "Airgap Prover",
+  "kind": "organCard",
+  "suit": "trust-rail",
+  "type": "Witness / Egress",
+  "rarity": "provisional",
+  "sigil": {
+    "glyph": "⊘→∅",
+    "motif": "a sealed ring with a severed outbound line",
+    "colors": ["#57d0e0", "#e77b6b", "#5fd08a"]
+  },
+  "tagline": "Observed egress zero, measured from below.",
+  "mechanic": "Seals a workload in a locked network namespace and witnesses its packets from the host side. Plays CLEAN when nothing crossed the boundary; CAUGHT when a phone-home is caught at the wire. The verdict re-derives from the captured bytes.",
+  "stats": {
+    "layer": "L4 (runtime / egress boundary)",
+    "measuresFrom": "below the guest (host side of the veth)",
+    "falsePass": "0 (positive control must be CAUGHT)",
+    "reRunnable": true
+  },
+  "earnedBy": {
+    "tests": "48/48",
+    "witness": "CLEAN (97/109 killed, 12 reviewed-equivalent)",
+    "rerunRail": "fixtures re-derive to expected.json byte-identically",
+    "liveMeasure": "pending first CI run (offline CLEAN + phone-home CAUGHT)"
+  },
+  "honestLimit": "A kernel/firmware implant below the capture point is not observable here — L3/L2 are the next layers down, adopt-and-prove.",
+  "credit": {
+    "gate": "witness (sjgant80-hub/witness)",
+    "reRunRail": "fallforgemint",
+    "sibling": "airgap (zero-wire mesh)"
+  },
+  "links": {
+    "live": "https://sjgant80-hub.github.io/airgap-prover/",
+    "repo": "https://github.com/sjgant80-hub/airgap-prover"
+  }
+}

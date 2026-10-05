@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>airgap-prover · observed egress zero, measured from below</title>
+<meta name="description" content="Run a workload in a locked network namespace, witness its packets from the host side, and emit a re-runnable report that observed egress was zero — or catch the one that phoned home. The kernel on this page is the gated kernel; press re-run and watch it re-derive the verdict.">
+<link rel="canonical" href="https://sjgant80-hub.github.io/airgap-prover/">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0a0c11">
+<meta property="og:title" content="airgap-prover">
+<meta property="og:description" content="Observed egress zero, measured from below the guest — a re-runnable proof.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sjgant80-hub.github.io/airgap-prover/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "airgap-prover",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Linux (measurement), any (verifier)",
+      "description": "Runs a workload as a guest in a locked, egress-controlled network namespace, witnesses the packets from the host side, and emits a re-runnable report that observed egress over the run was zero — or catches a workload that phoned home.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "url": "https://sjgant80-hub.github.io/airgap-prover/",
+      "author": { "@type": "Person", "name": "Simon Gant" },
+      "license": "https://opensource.org/licenses/MIT"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does airgap-prover actually prove?",
+          "acceptedAnswer": { "@type": "Answer", "text": "That over the capture window, zero packets crossed the host / network-namespace boundary to a routable destination that was not declared. It is measured from below the guest by tcpdump on the host side of the veth, so the workload cannot edit the packets the host already observed. It is 'observed egress zero under a stated threat model', not 'proof of a negative'." }
+        },
+        {
+          "@type": "Question",
+          "name": "What can it NOT see?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A kernel-level or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here." }
+        },
+        {
+          "@type": "Question",
+          "name": "How is the proof re-runnable?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The report carries the sha256 of exactly the capture that was observed. The verdict kernel is deterministic, so anyone can re-run it over the same pcap and derive the same verdict. CI re-derives both the synthetic fixtures and the real namespace captures on every push." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do you know the prover is not just always saying CLEAN?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A positive control: a workload that opens a connection to a public address (8.8.8.8) is run in the same sealed namespace. The prover must report CAUGHT. If it ever reported CLEAN for a phone-home, it would be worthless, so the gate fails on any false-pass." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#0a0c11; --panel:#12151d; --panel2:#181d27; --border:#232a36; --ink:#e9edf4; --dim:#828d9e;
+    --sig:#57d0e0; --gold:#e0b23a; --green:#5fd08a; --red:#e77b6b; --violet:#b79bff;
+    --serif:Georgia,'Times New Roman',serif; --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SFMono-Regular',Menlo,monospace;
+  }
+  @media (prefers-color-scheme:light){ :root:not([data-theme=dark]){ --bg:#f2f4f6; --panel:#fff; --panel2:#eef1f4; --border:#dde2e8; --ink:#151a20; --dim:#5f6b78; --sig:#1a8295; --green:#1a8f52; --red:#c0392b; --gold:#8a6d12; } }
+  :root[data-theme=dark]{ --bg:#0a0c11; --panel:#12151d; --panel2:#181d27; --border:#232a36; --ink:#e9edf4; --dim:#828d9e; --sig:#57d0e0; --green:#5fd08a; --red:#e77b6b; --gold:#e0b23a; }
+  :root[data-theme=light]{ --bg:#f2f4f6; --panel:#fff; --panel2:#eef1f4; --border:#dde2e8; --ink:#151a20; --dim:#5f6b78; --sig:#1a8295; --green:#1a8f52; --red:#c0392b; --gold:#8a6d12; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;min-height:100dvh}
+  .wrap{max-width:900px;margin:0 auto;padding:22px 16px 56px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  h1{font-family:var(--serif);font-weight:700;font-size:clamp(26px,5.5vw,40px);letter-spacing:-.02em}
+  h1 .a{color:var(--sig)}
+  h2{font-family:var(--serif);font-weight:700;font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);max-width:680px;margin:8px 0 0;font-size:14.5px} .sub b{color:var(--ink)}
+  section{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:18px;margin-top:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  button{font-family:var(--sans);font-weight:700;font-size:13px;padding:11px 16px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--ink);cursor:pointer;transition:.14s}
+  button:hover{border-color:var(--sig);color:var(--sig)}
+  button.sig{background:var(--sig);color:#06121a;border-color:var(--sig)} button.sig:hover{background:#6fe0f0;color:#06121a}
+  .themebtn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--ink);cursor:pointer;font-size:14px}
+  a{color:var(--sig);text-decoration:none} a:hover{text-decoration:underline}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:4px}
+  .card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .card .name{font-family:var(--mono);font-size:13px;color:var(--dim)}
+  .verdict{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-weight:700;font-size:15px;margin:8px 0}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .clean .dot{background:var(--green)} .clean{color:var(--green)}
+  .caught .dot{background:var(--red)} .caught{color:var(--red)}
+  .meta{font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.7;word-break:break-all}
+  .meta b{color:var(--ink);font-weight:600}
+  .chk{color:var(--green);font-family:var(--mono);font-size:12.5px;margin-top:10px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;margin-top:8px}
+  td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border)}
+  th{color:var(--dim);font-weight:600;text-transform:uppercase;font-size:10.5px;letter-spacing:.08em}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:9px;border:1px solid var(--border);color:var(--dim)}
+  .tag.e{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)}
+  .tag.ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+  p{margin:8px 0;color:var(--ink)} p.dim{color:var(--dim)}
+  ol,ul{margin:8px 0 8px 20px} li{margin:5px 0}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+  .tin{border-color:color-mix(in srgb,var(--gold) 45%,var(--border))}
+  .tin h2{color:var(--gold)}
+  details{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+  summary{cursor:pointer;font-weight:600} summary:hover{color:var(--sig)}
+  footer{color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:22px;text-align:center;line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span class="a">airgap</span>-prover</h1>
+      <p class="sub">Run a workload in a <b>locked network namespace</b>, witness its packets from <b>below</b> the guest, and emit a <b>re-runnable report</b> that observed egress was zero — or catch the one that phoned home. The kernel on this page <b>is</b> the gated kernel.</p>
+    </div>
+    <button class="themebtn" id="theme" title="toggle theme" aria-label="toggle theme">◐</button>
+  </header>
+
+  <section>
+    <div class="eyebrow">the proof, re-derived in your browser</div>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Committed captures → verdict</h2>
+      <button class="sig" id="rerun">Re-run the proof</button>
+    </div>
+    <p class="dim" style="margin-top:6px">Each capture below is decoded and classified by the <b>exact kernel</b> that CI mutation-gates. Press re-run: it re-derives from the pinned bytes and must match the committed verdict.</p>
+    <div class="cards" id="cards"></div>
+    <div class="chk" id="chk"></div>
+  </section>
+
+  <section class="tin">
+    <div class="eyebrow">honest threat model — on the tin</div>
+    <h2>What this sees, and what it cannot</h2>
+    <p>Egress is observed at the <b>host / network-namespace boundary</b> over the capture window, by <code>tcpdump</code> on the host side of the veth. The guest cannot edit packets the host already saw — that is why the measurement is from below.</p>
+    <p class="dim">A <b>kernel-level or firmware-level implant below this capture point</b> can move bytes this never sees. So this is <b>“observed egress zero under a stated threat model”</b>, never “proof of a negative”. L3 (the OS) and L2 (firmware) are the next layers down: adopt-and-prove, not claimed here.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">how the live measurement works</div>
+    <h2>Measured from below, on a real Linux boundary</h2>
+    <ol>
+      <li>A guest <b>network namespace</b> gets a veth pair to the host and a default route — so it <em>could</em> reach out if it tried.</li>
+      <li>The host runs <b>no forwarding and no NAT</b>, so anything the guest sends dies at the boundary. <code>tcpdump</code> on the host side records every packet that crossed it.</li>
+      <li>The <b>offline workload</b> (a prime-spine grow) runs inside and touches nothing — the capture shows <b>zero egress → CLEAN</b>.</li>
+      <li>The <b>positive control</b> opens a socket to <code>8.8.8.8</code> — the SYN is caught at the boundary → <b>CAUGHT</b> (0 false-pass). It never reaches Google.</li>
+      <li>The kernel renders the verdict from the captured bytes; the report carries the capture’s <code>sha256</code>, so it <b>re-derives byte-identically</b>.</li>
+    </ol>
+    <p class="dim"><code>ip netns</code> + <code>tcpdump</code> are Linux, so the real measured run happens on the GitHub Actions runner — the <b>CI re-derivation is the un-forgeable proof</b>.</p>
+    <p><a id="actions" href="https://github.com/sjgant80-hub/airgap-prover/actions" target="_blank" rel="noopener">▶ The live measurement on CI</a> &nbsp;·&nbsp; <a href="https://github.com/sjgant80-hub/airgap-prover" target="_blank" rel="noopener">source</a> &nbsp;·&nbsp; the latest run’s <code>sealed-captures</code> artifact holds the real pcaps + reports.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">questions answer-engines ask</div>
+    <h2>FAQ</h2>
+    <details open><summary>What does airgap-prover actually prove?</summary>
+      <p class="dim">That over the capture window, zero packets crossed the host / namespace boundary to a routable destination that was not declared. It is measured from below the guest, so the workload cannot edit the packets the host already observed. It is “observed egress zero under a stated threat model”, not “proof of a negative”.</p></details>
+    <details><summary>What can it NOT see?</summary>
+      <p class="dim">A kernel- or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here.</p></details>
+    <details><summary>How is the proof re-runnable?</summary>
+      <p class="dim">The report carries the sha256 of exactly the capture observed. The verdict kernel is deterministic, so anyone can re-run it over the same pcap and derive the same verdict. CI re-derives both the synthetic fixtures and the real namespace captures on every push.</p></details>
+    <details><summary>How do you know the prover is not just always saying CLEAN?</summary>
+      <p class="dim">A positive control: a workload that opens a connection to 8.8.8.8 runs in the same sealed namespace. The prover must report CAUGHT. The gate fails on any false-pass.</p></details>
+  </section>
+
+  <footer>
+    airgap-prover · MIT · by Simon Gant · part of the AI Native Solutions estate<br>
+    trust rail: mutation-gated with <a href="https://sjgant80-hub.github.io/witness/" target="_blank" rel="noopener">witness</a> · re-run rail after <a href="https://sjgant80-hub.github.io/fallforgemint/" target="_blank" rel="noopener">fallforgemint</a> · sibling: <a href="https://sjgant80-hub.github.io/airgap/" target="_blank" rel="noopener">airgap</a> (zero-wire mesh)<br>
+    <a href="https://github.com/sjgant80-hub/airgap-prover" target="_blank" rel="noopener">github</a> · <a href="./llms.txt">llms.txt</a>
+  </footer>
+</div>
+
+<script type="module">
+// egress.mjs — the airgap-prover KERNEL (zero-dep, Node + browser).
+//
+// Given the raw bytes of a packet capture (pcap) observed at the host /
+// network-namespace boundary while a workload ran, and a manifest of DECLARED
+// peers, render a re-runnable verdict: was any egress observed to a routable
+// destination that was NOT declared?
+//
+// This is the whole point of "measure from BELOW": the capture is taken by the
+// host, outside the guest. The guest cannot edit packets the host already saw.
+// The kernel only READS the observed bytes — it never touches the network.
+//
+// Honest threat model (also on the tin): this observes egress at the host /
+// namespace boundary over the capture window. A kernel- or firmware-level
+// implant BELOW this capture point could move bytes this never sees. That is
+// why L3 (OS) and L2 (firmware) are the next layers down — adopt-and-prove,
+// not claimed here. This is "observed egress zero under a stated threat model",
+// never "proof of a negative".
+
+// ---- pcap container ---------------------------------------------------------
+
+// Magic read big-endian off disk. 0xa1b2c3d4 means the file's fields are
+// stored BIG-endian; 0xd4c3b2a1 means they are stored LITTLE-endian (the bytes
+// were swapped on write). The *3c4d / 4d3c* variants are nanosecond-resolution.
+const MAGIC_BE = 0xa1b2c3d4; // fields big-endian
+const MAGIC_LE = 0xd4c3b2a1; // fields little-endian
+const MAGIC_NS_BE = 0xa1b23c4d; // fields big-endian, ns
+const MAGIC_NS_LE = 0x4d3cb2a1; // fields little-endian, ns
+
+const DLT_EN10MB = 1; // Ethernet (veth capture)
+const DLT_RAW = 101; // raw IP
+const DLT_LINUX_SLL = 113; // Linux cooked (tcpdump -i any)
+
+// Read a pcap buffer into a flat list of { linkType, frame } records.
+// `buf` is a Uint8Array / Node Buffer. Throws only on a truncated global
+// header; a truncated record stops iteration (tcpdump can be SIGKILLed mid
+// write — a half-record is not a packet, so we stop, we do not invent one).
+function parsePcap(buf) {
+  const u8 = toU8(buf);
+  if (u8.length < 24) throw new Error("pcap: truncated global header");
+  const magic = rd32be(u8, 0);
+  let le;
+  if (magic === MAGIC_LE || magic === MAGIC_NS_LE) le = true;
+  else if (magic === MAGIC_BE || magic === MAGIC_NS_BE) le = false;
+  else throw new Error("pcap: bad magic 0x" + magic.toString(16));
+  const r32 = le ? rd32le : rd32be;
+  const linkType = r32(u8, 20);
+  const records = [];
+  let off = 24;
+  while (off + 16 <= u8.length) {
+    const inclLen = r32(u8, off + 8);
+    const start = off + 16;
+    const end = start + inclLen;
+    if (end > u8.length) break; // truncated final record — stop, do not fabricate
+    records.push({ linkType, frame: u8.subarray(start, end) });
+    off = end;
+  }
+  return records;
+}
+
+// ---- link layer -> IP -------------------------------------------------------
+
+// Pull { version, dst } (dst = address bytes) out of one captured frame, or
+// null when the frame carries no IP packet (ARP, truncated, unknown link type).
+function frameToIp(linkType, frame) {
+  let ip = null;
+  if (linkType === DLT_EN10MB) ip = ethPayload(frame);
+  else if (linkType === DLT_RAW) ip = frame;
+  else if (linkType === DLT_LINUX_SLL) ip = sllPayload(frame);
+  if (ip === null) return null;
+  return ipDst(ip);
+}
+
+// Ethernet II: dst(6) src(6) ethertype(2) [802.1Q vlan tag(4)] payload.
+function ethPayload(frame) {
+  if (frame.length < 14) return null;
+  let o = 12;
+  let ether = (frame[o] << 8) | frame[o + 1];
+  o += 2;
+  while (ether === 0x8100 || ether === 0x88a8) {
+    // VLAN / QinQ tag: 2 bytes TCI then 2 bytes inner ethertype
+    if (o + 4 > frame.length) return null;
+    ether = (frame[o + 2] << 8) | frame[o + 3];
+    o += 4;
+  }
+  if (ether !== 0x0800 && ether !== 0x86dd) return null; // not IPv4/IPv6
+  return frame.subarray(o);
+}
+
+// Linux SLL (cooked): 16-byte header, ethertype at offset 14.
+function sllPayload(frame) {
+  if (frame.length < 16) return null;
+  const ether = (frame[14] << 8) | frame[15];
+  if (ether !== 0x0800 && ether !== 0x86dd) return null;
+  return frame.subarray(16);
+}
+
+// IP header -> { version, dst: Uint8Array }. null when too short / not v4/v6.
+function ipDst(ip) {
+  if (ip.length < 1) return null;
+  const version = ip[0] >> 4;
+  if (version === 4) {
+    if (ip.length < 20) return null;
+    return { version: 4, dst: ip.subarray(16, 20) };
+  }
+  if (version === 6) {
+    if (ip.length < 40) return null;
+    return { version: 6, dst: ip.subarray(24, 40) };
+  }
+  return null;
+}
+
+// ---- address classification -------------------------------------------------
+
+// The classes. "egress" is the only one that fails the gate.
+const LOCAL = "local"; // loopback
+const LINKLOCAL = "link-local";
+const MULTICAST = "multicast";
+const DECLARED = "declared-peer";
+const EGRESS = "egress";
+
+function isLoopback(version, a) {
+  if (version === 4) return a[0] === 127;
+  return isV6(a, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]); // ::1
+}
+function isLinkLocal(version, a) {
+  if (version === 4) return a[0] === 169 && a[1] === 254; // 169.254/16
+  return a[0] === 0xfe && (a[1] & 0xc0) === 0x80; // fe80::/10
+}
+function isMulticast(version, a) {
+  if (version === 4) return a[0] >= 224 && a[0] <= 239; // 224.0.0.0/4
+  return a[0] === 0xff; // ff00::/8
+}
+function isUnspecified(version, a) {
+  if (version === 4) return a[0] === 0 && a[1] === 0 && a[2] === 0 && a[3] === 0;
+  return isV6(a, new Array(16).fill(0)); // ::
+}
+
+// A declared peer is given as a CIDR in the manifest (v4 "10.9.9.0/24" or an
+// exact v6 address). Returns true when `a` falls inside `cidr`.
+function inCidr(version, a, cidr) {
+  const slash = cidr.indexOf("/");
+  const head = slash === -1 ? cidr : cidr.slice(0, slash);
+  const bits = slash === -1 ? (version === 4 ? 32 : 128) : parseInt(cidr.slice(slash + 1), 10);
+  const net = version === 4 ? v4Bytes(head) : v6Bytes(head);
+  if (net === null) return false; // malformed CIDR, or wrong family for this head
+  let remaining = bits;
+  for (let i = 0; i < a.length; i++) {
+    if (remaining <= 0) break;
+    const take = remaining >= 8 ? 8 : remaining;
+    const mask = take === 8 ? 0xff : (0xff << (8 - take)) & 0xff;
+    if ((a[i] & mask) !== (net[i] & mask)) return false;
+    remaining -= 8;
+  }
+  return true;
+}
+
+// Classify one observed destination against the declared-peer allowlist.
+function classify(version, dst, declaredPeers) {
+  if (isLoopback(version, dst)) return LOCAL;
+  if (isUnspecified(version, dst)) return LOCAL;
+  if (isLinkLocal(version, dst)) return LINKLOCAL;
+  if (isMulticast(version, dst)) return MULTICAST;
+  for (const cidr of declaredPeers) {
+    if (inCidr(version, dst, cidr)) return DECLARED;
+  }
+  return EGRESS;
+}
+
+// ---- the verdict ------------------------------------------------------------
+
+// Render the re-runnable verdict from captured bytes + a manifest.
+// Deterministic: the same (pcap, manifest) yields byte-identical output. No
+// timestamps, no ordering surprises — observed destinations are returned sorted
+// and de-duplicated so the result is a pure function of what was seen.
+function witnessEgress(pcapBuf, manifest = {}) {
+  const declared = Array.isArray(manifest.declaredPeers) ? manifest.declaredPeers : [];
+  const records = parsePcap(pcapBuf);
+  const seen = new Map(); // key -> { dst, version, class, count }
+  let framesWithIp = 0;
+  for (const rec of records) {
+    const info = frameToIp(rec.linkType, rec.frame);
+    if (info === null) continue; // non-IP frame (ARP, etc.) — nothing to route out
+    framesWithIp++;
+    const text = ipToString(info.version, info.dst);
+    const cls = classify(info.version, info.dst, declared);
+    const key = info.version + "|" + text;
+    const prev = seen.get(key);
+    if (prev) prev.count++;
+    else seen.set(key, { dst: text, version: info.version, class: cls, count: 1 });
+  }
+  const observed = [...seen.values()].sort((x, y) =>
+    x.dst < y.dst ? -1 : x.dst > y.dst ? 1 : x.version - y.version
+  );
+  const egressFlows = observed.filter((o) => o.class === EGRESS);
+  return {
+    verdict: egressFlows.length === 0 ? "CLEAN" : "CAUGHT",
+    egressCount: egressFlows.length,
+    egressFlows,
+    observed,
+    totalFrames: records.length,
+    ipFrames: framesWithIp,
+    declaredPeers: declared,
+  };
+}
+
+// ---- the re-runnable report -------------------------------------------------
+
+const THREAT_MODEL =
+  "Egress is observed at the host / network-namespace boundary over the capture " +
+  "window. A kernel- or firmware-level implant BELOW this capture point can move " +
+  "bytes this never sees — so this is 'observed egress zero under a stated threat " +
+  "model', not 'proof of a negative'. L3 (OS) and L2 (firmware) are the next layers " +
+  "down: adopt-and-prove, not claimed here.";
+
+// Assemble the re-runnable report from captured bytes + manifest + provenance.
+// Pure and deterministic: identical (pcapBuf, manifest, meta) -> identical object.
+// `meta` carries provenance computed by the caller (hashes are I/O): pcapSha256,
+// pcapBytes, workload (its name + source sha256), capturedBy, window.
+function buildReport(pcapBuf, manifest = {}, meta = {}) {
+  const w = witnessEgress(pcapBuf, manifest);
+  return {
+    tool: "airgap-prover",
+    verdict: w.verdict,
+    egressCount: w.egressCount,
+    threatModel: THREAT_MODEL,
+    workload: meta.workload || null,
+    capturedBy: meta.capturedBy || null,
+    pcapSha256: meta.pcapSha256 || null,
+    pcapBytes: typeof meta.pcapBytes === "number" ? meta.pcapBytes : null,
+    declaredPeers: w.declaredPeers,
+    totalFrames: w.totalFrames,
+    ipFrames: w.ipFrames,
+    egressFlows: w.egressFlows,
+    observed: w.observed,
+  };
+}
+
+// ---- small deterministic helpers -------------------------------------------
+
+function toU8(buf) {
+  if (buf instanceof Uint8Array) return buf;
+  if (buf && buf.buffer instanceof ArrayBuffer) return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (buf instanceof ArrayBuffer) return new Uint8Array(buf);
+  throw new Error("pcap: need bytes");
+}
+function rd32le(u8, o) {
+  return (u8[o] | (u8[o + 1] << 8) | (u8[o + 2] << 16) | (u8[o + 3] << 24)) >>> 0;
+}
+function rd32be(u8, o) {
+  return ((u8[o] << 24) | (u8[o + 1] << 16) | (u8[o + 2] << 8) | u8[o + 3]) >>> 0;
+}
+function isV6(a, want) {
+  for (let i = 0; i < 16; i++) if (a[i] !== want[i]) return false;
+  return true;
+}
+function v4Bytes(s) {
+  const parts = s.split(".");
+  if (parts.length !== 4) return null;
+  const out = new Uint8Array(4);
+  for (let i = 0; i < 4; i++) {
+    const n = Number(parts[i]);
+    if (!Number.isInteger(n) || n < 0 || n > 255) return null;
+    out[i] = n;
+  }
+  return out;
+}
+function v6Bytes(s) {
+  // Supports full and :: compressed forms (enough for declared peers / tests).
+  const hasDouble = s.indexOf("::") !== -1;
+  let head = s, tail = "";
+  if (hasDouble) {
+    const bits = s.split("::");
+    if (bits.length !== 2) return null;
+    head = bits[0];
+    tail = bits[1];
+  }
+  const h = head === "" ? [] : head.split(":");
+  const t = tail === "" ? [] : tail.split(":");
+  if (!hasDouble && h.length !== 8) return null;
+  const mid = 8 - h.length - t.length;
+  if (mid < 0) return null;
+  const groups = [...h, ...new Array(mid).fill("0"), ...t];
+  if (groups.length !== 8) return null;
+  const out = new Uint8Array(16);
+  for (let i = 0; i < 8; i++) {
+    const n = parseInt(groups[i] || "0", 16);
+    if (!Number.isFinite(n) || n < 0 || n > 0xffff) return null;
+    out[i * 2] = n >> 8;
+    out[i * 2 + 1] = n & 0xff;
+  }
+  return out;
+}
+function ipToString(version, a) {
+  if (version === 4) return a[0] + "." + a[1] + "." + a[2] + "." + a[3];
+  const g = [];
+  for (let i = 0; i < 16; i += 2) g.push(((a[i] << 8) | a[i + 1]).toString(16));
+  return g.join(":");
+}
+
+
+const FIXTURES = {"declared-peer.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACQoJCQEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJ/g==","offline.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAngAAD7A/FTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACan+AAUE8VNlAAAAADYAAAA2AAAAAgAAAAACAgAAAAABht1gAAAAAAAGQP0AAAAAAAAAAAAAAAAAAAn9AAAAAAAAAAAAAAAAAAABBfFTZQAAAAA2AAAANgAAAAIAAAAAAgIAAAAAAYbdYAAAAAAABkD9AAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAQ==","phonehome.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAkICAgIA/FTZQAAAAA2AAAANgAAAAIAAAAAAgIAAAAAAYbdYAAAAAAABkD9AAAAAAAAAAAAAAAAAAAJIAFIYEhgAAAAAAAAAACIiA=="};
+const EXPECTED = {"offline.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"0:0:0:0:0:0:0:1","version":6,"class":"local","count":1},{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"169.254.0.5","version":4,"class":"link-local","count":1},{"dst":"224.0.0.251","version":4,"class":"multicast","count":1},{"dst":"fd00:0:0:0:0:0:0:1","version":6,"class":"declared-peer","count":1}],"totalFrames":6,"ipFrames":6,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"phonehome.pcap":{"verdict":"CAUGHT","egressCount":2,"egressFlows":[{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"totalFrames":4,"ipFrames":4,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"declared-peer.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"10.9.9.254","version":4,"class":"declared-peer","count":1}],"totalFrames":2,"ipFrames":2,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"__manifest":{"declaredPeers":["10.9.9.0/24","fd00::/8"]}};
+const MANIFEST = EXPECTED.__manifest || { declaredPeers: [] };
+
+// theme toggle (defaults to OS; click flips and persists for this viewer)
+const root = document.documentElement;
+try { const t = localStorage.getItem("agp-theme"); if (t) root.setAttribute("data-theme", t); } catch {}
+document.getElementById("theme").addEventListener("click", () => {
+  const cur = root.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : cur === "light" ? "dark"
+    : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+  root.setAttribute("data-theme", next);
+  try { localStorage.setItem("agp-theme", next); } catch {}
+});
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function sha256Hex(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function render() {
+  const cards = document.getElementById("cards");
+  cards.textContent = "";
+  let allMatch = true;
+  for (const name of Object.keys(FIXTURES)) {
+    const bytes = b64ToBytes(FIXTURES[name]);
+    const r = witnessEgress(bytes, MANIFEST);          // <- the real kernel
+    const want = EXPECTED[name];
+    const match = want && JSON.stringify(r) === JSON.stringify(want);
+    if (!match) allMatch = false;
+    const hash = await sha256Hex(bytes);
+    const cls = r.verdict === "CLEAN" ? "clean" : "caught";
+
+    const rows = r.observed.map((o) =>
+      `<tr><td>${o.dst}</td><td><span class="tag ${o.class === "egress" ? "e" : "ok"}">${o.class}</span></td></tr>`
+    ).join("");
+
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML =
+      `<div class="name">${name}</div>` +
+      `<div class="verdict ${cls}"><span class="dot"></span>${r.verdict}</div>` +
+      `<div class="meta"><b>${r.egressCount}</b> egress · <b>${r.ipFrames}</b> IP frames · ${match ? "matches committed verdict" : "DRIFT"}<br>sha256 <b>${hash.slice(0, 16)}…</b></div>` +
+      `<table><thead><tr><th>destination</th><th>class</th></tr></thead><tbody>${rows}</tbody></table>`;
+    cards.appendChild(el);
+  }
+  return allMatch;
+}
+
+document.getElementById("rerun").addEventListener("click", async () => {
+  const chk = document.getElementById("chk");
+  chk.textContent = "re-deriving from the pinned bytes…";
+  const ok = await render();
+  chk.textContent = ok
+    ? "✓ re-derived byte-identically — every verdict matches the committed proof."
+    : "✗ drift detected — a verdict did not match the committed proof.";
+  chk.style.color = ok ? "var(--green)" : "var(--red)";
+});
+
+render();
+</script>
+</body>
+</html>

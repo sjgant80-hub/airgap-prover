@@ -1,0 +1,4 @@
+{
+  "_comment": "Declared peers for the sealed namespace run. Loopback is always allowed; the veth subnet is the one declared LOCAL peer. Anything else observed crossing the boundary is egress.",
+  "declaredPeers": ["10.9.9.0/24"]
+}

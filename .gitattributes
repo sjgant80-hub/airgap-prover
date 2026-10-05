@@ -1,0 +1,8 @@
+# Normalise ALL text to LF in the repo and on checkout, so the generated page
+# and fixtures match Node's LF output on the Linux runner (the determinism gate
+# does `git diff --exit-code`). Shell scripts MUST be LF for bash. pcaps are
+# binary and must never be line-ending-converted.
+* text=auto eol=lf
+*.sh text eol=lf
+*.pcap binary
+*.webmanifest text eol=lf

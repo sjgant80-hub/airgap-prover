@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>airgap-prover · observed egress zero, measured from below</title>
+<meta name="description" content="Run a workload in a locked network namespace, witness its packets from the host side, and emit a re-runnable report that observed egress was zero — or catch the one that phoned home. The kernel on this page is the gated kernel; press re-run and watch it re-derive the verdict.">
+<link rel="canonical" href="https://sjgant80-hub.github.io/airgap-prover/">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0a0c11">
+<meta property="og:title" content="airgap-prover">
+<meta property="og:description" content="Observed egress zero, measured from below the guest — a re-runnable proof.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sjgant80-hub.github.io/airgap-prover/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "airgap-prover",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Linux (measurement), any (verifier)",
+      "description": "Runs a workload as a guest in a locked, egress-controlled network namespace, witnesses the packets from the host side, and emits a re-runnable report that observed egress over the run was zero — or catches a workload that phoned home.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "url": "https://sjgant80-hub.github.io/airgap-prover/",
+      "author": { "@type": "Person", "name": "Simon Gant" },
+      "license": "https://opensource.org/licenses/MIT"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does airgap-prover actually prove?",
+          "acceptedAnswer": { "@type": "Answer", "text": "That over the capture window, zero packets crossed the host / network-namespace boundary to a routable destination that was not declared. It is measured from below the guest by tcpdump on the host side of the veth, so the workload cannot edit the packets the host already observed. It is 'observed egress zero under a stated threat model', not 'proof of a negative'." }
+        },
+        {
+          "@type": "Question",
+          "name": "What can it NOT see?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A kernel-level or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here." }
+        },
+        {
+          "@type": "Question",
+          "name": "How is the proof re-runnable?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The report carries the sha256 of exactly the capture that was observed. The verdict kernel is deterministic, so anyone can re-run it over the same pcap and derive the same verdict. CI re-derives both the synthetic fixtures and the real namespace captures on every push." }
+        },
+        {
+          "@type": "Question",
+          "name": "How do you know the prover is not just always saying CLEAN?",
+          "acceptedAnswer": { "@type": "Answer", "text": "A positive control: a workload that opens a connection to a public address (8.8.8.8) is run in the same sealed namespace. The prover must report CAUGHT. If it ever reported CLEAN for a phone-home, it would be worthless, so the gate fails on any false-pass." }
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#0a0c11; --panel:#12151d; --panel2:#181d27; --border:#232a36; --ink:#e9edf4; --dim:#828d9e;
+    --sig:#57d0e0; --gold:#e0b23a; --green:#5fd08a; --red:#e77b6b; --violet:#b79bff;
+    --serif:Georgia,'Times New Roman',serif; --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SFMono-Regular',Menlo,monospace;
+  }
+  @media (prefers-color-scheme:light){ :root:not([data-theme=dark]){ --bg:#f2f4f6; --panel:#fff; --panel2:#eef1f4; --border:#dde2e8; --ink:#151a20; --dim:#5f6b78; --sig:#1a8295; --green:#1a8f52; --red:#c0392b; --gold:#8a6d12; } }
+  :root[data-theme=dark]{ --bg:#0a0c11; --panel:#12151d; --panel2:#181d27; --border:#232a36; --ink:#e9edf4; --dim:#828d9e; --sig:#57d0e0; --green:#5fd08a; --red:#e77b6b; --gold:#e0b23a; }
+  :root[data-theme=light]{ --bg:#f2f4f6; --panel:#fff; --panel2:#eef1f4; --border:#dde2e8; --ink:#151a20; --dim:#5f6b78; --sig:#1a8295; --green:#1a8f52; --red:#c0392b; --gold:#8a6d12; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;min-height:100dvh}
+  .wrap{max-width:900px;margin:0 auto;padding:22px 16px 56px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  h1{font-family:var(--serif);font-weight:700;font-size:clamp(26px,5.5vw,40px);letter-spacing:-.02em}
+  h1 .a{color:var(--sig)}
+  h2{font-family:var(--serif);font-weight:700;font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);max-width:680px;margin:8px 0 0;font-size:14.5px} .sub b{color:var(--ink)}
+  section{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:18px;margin-top:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  button{font-family:var(--sans);font-weight:700;font-size:13px;padding:11px 16px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--ink);cursor:pointer;transition:.14s}
+  button:hover{border-color:var(--sig);color:var(--sig)}
+  button.sig{background:var(--sig);color:#06121a;border-color:var(--sig)} button.sig:hover{background:#6fe0f0;color:#06121a}
+  .themebtn{width:36px;height:36px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--ink);cursor:pointer;font-size:14px}
+  a{color:var(--sig);text-decoration:none} a:hover{text-decoration:underline}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:4px}
+  .card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .card .name{font-family:var(--mono);font-size:13px;color:var(--dim)}
+  .verdict{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-weight:700;font-size:15px;margin:8px 0}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .clean .dot{background:var(--green)} .clean{color:var(--green)}
+  .caught .dot{background:var(--red)} .caught{color:var(--red)}
+  .meta{font-family:var(--mono);font-size:11.5px;color:var(--dim);line-height:1.7;word-break:break-all}
+  .meta b{color:var(--ink);font-weight:600}
+  .chk{color:var(--green);font-family:var(--mono);font-size:12.5px;margin-top:10px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;margin-top:8px}
+  td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border)}
+  th{color:var(--dim);font-weight:600;text-transform:uppercase;font-size:10.5px;letter-spacing:.08em}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:9px;border:1px solid var(--border);color:var(--dim)}
+  .tag.e{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent)}
+  .tag.ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+  p{margin:8px 0;color:var(--ink)} p.dim{color:var(--dim)}
+  ol,ul{margin:8px 0 8px 20px} li{margin:5px 0}
+  code{font-family:var(--mono);font-size:12.5px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+  .tin{border-color:color-mix(in srgb,var(--gold) 45%,var(--border))}
+  .tin h2{color:var(--gold)}
+  details{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+  summary{cursor:pointer;font-weight:600} summary:hover{color:var(--sig)}
+  footer{color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:22px;text-align:center;line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span class="a">airgap</span>-prover</h1>
+      <p class="sub">Run a workload in a <b>locked network namespace</b>, witness its packets from <b>below</b> the guest, and emit a <b>re-runnable report</b> that observed egress was zero — or catch the one that phoned home. The kernel on this page <b>is</b> the gated kernel.</p>
+    </div>
+    <button class="themebtn" id="theme" title="toggle theme" aria-label="toggle theme">◐</button>
+  </header>
+
+  <section>
+    <div class="eyebrow">the proof, re-derived in your browser</div>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Committed captures → verdict</h2>
+      <button class="sig" id="rerun">Re-run the proof</button>
+    </div>
+    <p class="dim" style="margin-top:6px">Each capture below is decoded and classified by the <b>exact kernel</b> that CI mutation-gates. Press re-run: it re-derives from the pinned bytes and must match the committed verdict.</p>
+    <div class="cards" id="cards"></div>
+    <div class="chk" id="chk"></div>
+  </section>
+
+  <section class="tin">
+    <div class="eyebrow">honest threat model — on the tin</div>
+    <h2>What this sees, and what it cannot</h2>
+    <p>Egress is observed at the <b>host / network-namespace boundary</b> over the capture window, by <code>tcpdump</code> on the host side of the veth. The guest cannot edit packets the host already saw — that is why the measurement is from below.</p>
+    <p class="dim">A <b>kernel-level or firmware-level implant below this capture point</b> can move bytes this never sees. So this is <b>“observed egress zero under a stated threat model”</b>, never “proof of a negative”. L3 (the OS) and L2 (firmware) are the next layers down: adopt-and-prove, not claimed here.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">how the live measurement works</div>
+    <h2>Measured from below, on a real Linux boundary</h2>
+    <ol>
+      <li>A guest <b>network namespace</b> gets a veth pair to the host and a default route — so it <em>could</em> reach out if it tried.</li>
+      <li>The host runs <b>no forwarding and no NAT</b>, so anything the guest sends dies at the boundary. <code>tcpdump</code> on the host side records every packet that crossed it.</li>
+      <li>The <b>offline workload</b> (a prime-spine grow) runs inside and touches nothing — the capture shows <b>zero egress → CLEAN</b>.</li>
+      <li>The <b>positive control</b> opens a socket to <code>8.8.8.8</code> — the SYN is caught at the boundary → <b>CAUGHT</b> (0 false-pass). It never reaches Google.</li>
+      <li>The kernel renders the verdict from the captured bytes; the report carries the capture’s <code>sha256</code>, so it <b>re-derives byte-identically</b>.</li>
+    </ol>
+    <p class="dim"><code>ip netns</code> + <code>tcpdump</code> are Linux, so the real measured run happens on the GitHub Actions runner — the <b>CI re-derivation is the un-forgeable proof</b>.</p>
+    <p><a id="actions" href="https://github.com/sjgant80-hub/airgap-prover/actions" target="_blank" rel="noopener">▶ The live measurement on CI</a> &nbsp;·&nbsp; <a href="https://github.com/sjgant80-hub/airgap-prover" target="_blank" rel="noopener">source</a> &nbsp;·&nbsp; the latest run’s <code>sealed-captures</code> artifact holds the real pcaps + reports.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">questions answer-engines ask</div>
+    <h2>FAQ</h2>
+    <details open><summary>What does airgap-prover actually prove?</summary>
+      <p class="dim">That over the capture window, zero packets crossed the host / namespace boundary to a routable destination that was not declared. It is measured from below the guest, so the workload cannot edit the packets the host already observed. It is “observed egress zero under a stated threat model”, not “proof of a negative”.</p></details>
+    <details><summary>What can it NOT see?</summary>
+      <p class="dim">A kernel- or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here.</p></details>
+    <details><summary>How is the proof re-runnable?</summary>
+      <p class="dim">The report carries the sha256 of exactly the capture observed. The verdict kernel is deterministic, so anyone can re-run it over the same pcap and derive the same verdict. CI re-derives both the synthetic fixtures and the real namespace captures on every push.</p></details>
+    <details><summary>How do you know the prover is not just always saying CLEAN?</summary>
+      <p class="dim">A positive control: a workload that opens a connection to 8.8.8.8 runs in the same sealed namespace. The prover must report CAUGHT. The gate fails on any false-pass.</p></details>
+  </section>
+
+  <footer>
+    airgap-prover · MIT · by Simon Gant · part of the AI Native Solutions estate<br>
+    trust rail: mutation-gated with <a href="https://sjgant80-hub.github.io/witness/" target="_blank" rel="noopener">witness</a> · re-run rail after <a href="https://sjgant80-hub.github.io/fallforgemint/" target="_blank" rel="noopener">fallforgemint</a> · sibling: <a href="https://sjgant80-hub.github.io/airgap/" target="_blank" rel="noopener">airgap</a> (zero-wire mesh)<br>
+    <a href="https://github.com/sjgant80-hub/airgap-prover" target="_blank" rel="noopener">github</a> · <a href="./llms.txt">llms.txt</a>
+  </footer>
+</div>
+
+<script type="module">
+/*KERNEL*/
+
+const FIXTURES = /*FIXTURES*/;
+const EXPECTED = /*EXPECTED*/;
+const MANIFEST = EXPECTED.__manifest || { declaredPeers: [] };
+
+// theme toggle (defaults to OS; click flips and persists for this viewer)
+const root = document.documentElement;
+try { const t = localStorage.getItem("agp-theme"); if (t) root.setAttribute("data-theme", t); } catch {}
+document.getElementById("theme").addEventListener("click", () => {
+  const cur = root.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : cur === "light" ? "dark"
+    : (matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+  root.setAttribute("data-theme", next);
+  try { localStorage.setItem("agp-theme", next); } catch {}
+});
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function sha256Hex(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function render() {
+  const cards = document.getElementById("cards");
+  cards.textContent = "";
+  let allMatch = true;
+  for (const name of Object.keys(FIXTURES)) {
+    const bytes = b64ToBytes(FIXTURES[name]);
+    const r = witnessEgress(bytes, MANIFEST);          // <- the real kernel
+    const want = EXPECTED[name];
+    const match = want && JSON.stringify(r) === JSON.stringify(want);
+    if (!match) allMatch = false;
+    const hash = await sha256Hex(bytes);
+    const cls = r.verdict === "CLEAN" ? "clean" : "caught";
+
+    const rows = r.observed.map((o) =>
+      `<tr><td>${o.dst}</td><td><span class="tag ${o.class === "egress" ? "e" : "ok"}">${o.class}</span></td></tr>`
+    ).join("");
+
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML =
+      `<div class="name">${name}</div>` +
+      `<div class="verdict ${cls}"><span class="dot"></span>${r.verdict}</div>` +
+      `<div class="meta"><b>${r.egressCount}</b> egress · <b>${r.ipFrames}</b> IP frames · ${match ? "matches committed verdict" : "DRIFT"}<br>sha256 <b>${hash.slice(0, 16)}…</b></div>` +
+      `<table><thead><tr><th>destination</th><th>class</th></tr></thead><tbody>${rows}</tbody></table>`;
+    cards.appendChild(el);
+  }
+  return allMatch;
+}
+
+document.getElementById("rerun").addEventListener("click", async () => {
+  const chk = document.getElementById("chk");
+  chk.textContent = "re-deriving from the pinned bytes…";
+  const ok = await render();
+  chk.textContent = ok
+    ? "✓ re-derived byte-identically — every verdict matches the committed proof."
+    : "✗ drift detected — a verdict did not match the committed proof.";
+  chk.style.color = ok ? "var(--green)" : "var(--red)";
+});
+
+render();
+</script>
+</body>
+</html>

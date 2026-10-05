@@ -1,0 +1,86 @@
+name: proof-of-play
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  # ---- the kernel gate: tests + mutation witness + the re-run rail -----------
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+
+      - name: the egress kernel against its falsifiable boundaries
+        run: node --test egress.test.mjs
+
+      - name: the synthetic fixtures regenerate byte-identically (determinism)
+        run: |
+          node fixtures/make.mjs
+          git diff --exit-code -- fixtures/ \
+            || { echo "::error::fixtures are not deterministic"; exit 1; }
+
+      - name: the re-run rail — committed pcaps re-derive to expected.json
+        run: node rerun.mjs
+
+      - name: the live page re-inlines the kernel byte-identically (no drift)
+        run: |
+          node build-page.mjs
+          git diff --exit-code -- index.html \
+            || { echo "::error::index.html drifted from the kernel — run build-page.mjs"; exit 1; }
+
+      # Pinned. An unpinned gate is a gate somebody else can change.
+      - name: witness — try to break the egress law, then READ the verdict (CLEAN)
+        run: |
+          git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git /tmp/witness
+          node /tmp/witness/witness.mjs mutate egress.mjs \
+            --timeout 90000 --cap 500 --baseline witness.egress.baseline.json \
+            --test node --test egress.test.mjs | tee verdict.txt
+          grep -q '"clean": true' verdict.txt \
+            || { echo "::error::mutants survived — the gate is not clean"; exit 1; }
+
+  # ---- the LIVE measurement: measure egress FROM BELOW on real packets -------
+  # This is the un-forgeable proof. It only runs on Linux (ip netns + tcpdump);
+  # the CI runner owns the boundary, so the capture cannot be edited by the guest.
+  live-measure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+
+      - name: install tcpdump + iproute2
+        run: sudo apt-get update && sudo apt-get install -y tcpdump iproute2
+
+      - name: SEALED RUN 1 — the offline workload must show ZERO egress (CLEAN)
+        run: |
+          chmod +x harness/run-namespace.sh
+          sudo ./harness/run-namespace.sh offline out
+          node cli.mjs out/offline.pcap --manifest harness/manifest.json \
+            --workload offline-grow --capturedBy "tcpdump on agp-host veth" \
+            --assert CLEAN | tee out/offline.report.json
+
+      - name: SEALED RUN 2 — the phone-home control must be CAUGHT (0 false-pass)
+        run: |
+          sudo ./harness/run-namespace.sh phonehome out
+          node cli.mjs out/phonehome.pcap --manifest harness/manifest.json \
+            --workload phone-home --capturedBy "tcpdump on agp-host veth" \
+            --assert CAUGHT | tee out/phonehome.report.json
+
+      - name: re-derive BOTH live captures byte-identically (the re-run rail)
+        run: |
+          set -e
+          for M in offline phonehome; do
+            B=$(node cli.mjs out/$M.pcap --manifest harness/manifest.json)
+            C=$(node cli.mjs out/$M.pcap --manifest harness/manifest.json)
+            [ "$B" = "$C" ] || { echo "::error::$M did not re-derive identically"; exit 1; }
+            echo "$M re-derives identically from the pinned capture"
+          done
+
+      - name: upload the real captures + reports (anyone can re-run them)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sealed-captures
+          path: |
+            out/*.pcap
+            out/*.report.json
+          if-no-files-found: error
