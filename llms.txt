@@ -27,6 +27,11 @@ airgap-prover is a sovereign, MIT-licensed build by Simon Gant (UK), part of the
 - The verdict kernel is mutation-gated with witness (sjgant80-hub/witness); the re-run rail (CI re-derives from pinned inputs) follows the pattern proven in fallforgemint.
 - Sibling project: airgap (a zero-network-stack mesh) — different idea, shared name.
 
+## Credit
+
+- The way it states its claim — a null that is allowed to hold, a positive control so the test can lose, predictions committed before the measurement, nothing claimed past what was observed — draws on Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service LLC — "Entropy-Address Equivalence as a Candidate Bridge to Spacetime Geometry," Working Note, September 2026. Open Defensive Prior Art (Creative Commons).
+- airgap-prover itself (kernel, harness, page) is the estate's own work.
+
 ## Citation
 
 Gant, Simon (2026). *airgap-prover*. https://sjgant80-hub.github.io/airgap-prover/

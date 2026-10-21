@@ -1,0 +1,19 @@
+airgap-prover — NOTICE
+
+airgap-prover is built by Simon Gant (AI Native Solutions) and released under the MIT licence (LICENSE).
+The prover, its egress kernel, harness and page are the estate's own work.
+
+Draws on
+--------
+The way it states its claim — a null that is allowed to hold, a positive control so the test can lose,
+predictions committed before the measurement (SEAL.md), and nothing claimed past what was observed —
+draws on:
+
+  Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service LLC — "Entropy-Address
+  Equivalence as a Candidate Bridge to Spacetime Geometry," Working Note, September 2026.
+  Open Defensive Prior Art (Creative Commons).
+
+Tools
+-----
+Mutation-gated with witness (sjgant80-hub/witness@v0.6). The re-run rail follows the pattern proven in
+fallforgemint.
