@@ -84,9 +84,7 @@ node cli.mjs out/phonehome.pcap --manifest harness/manifest.json --assert CAUGHT
   (different idea, shared name).
 - The way it states its claim — a null that is allowed to hold, a positive control so the test can
   lose, predictions committed before the measurement ([`SEAL.md`](SEAL.md)), and nothing claimed past
-  what was observed — draws on **Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck
-  Service LLC — "Entropy-Address Equivalence as a Candidate Bridge to Spacetime Geometry," Working Note,
-  September 2026. Open Defensive Prior Art (Creative Commons).** The prover, its kernel and harness are
+  what was observed — draws on **Gary W. Floyd, Lumiea Systems Research Division — ThunderStruck Service LLC — "Entropy-Address Equivalence as a Candidate Bridge to Spacetime Geometry," Working Note, September 2026. Open Defensive Prior Art (Creative Commons).** The prover, its kernel and harness are
   the estate's own work. See [`NOTICE`](NOTICE).
 
 MIT · by Simon Gant · part of the [AI Native Solutions](https://www.ai-nativesolutions.com/) estate.
