@@ -58,3 +58,30 @@ Node 20). All three predictions held.
 Honest one-line: this proves **observed egress zero at the host / network-namespace
 boundary over the run** (and catches the one that tried). It does **not** see a
 kernel/firmware implant below that boundary — L3/L2 are the next layers down.
+
+---
+
+## Grow re-verification (2026-11-23) — vantage ladder + air-gap mode
+
+The kernel grew (commit 316d9fe): a **vantage** field (`host-netns` / `external-tap` /
+`physical-airgap`) with an honest per-vantage threat model, and **air-gap mode**
+(`mode:"airgap"` / `--airgap`) that empties the declared-peer allowlist so any routable
+packet is egress. The original three predictions above were **re-verified unchanged** at
+the new SHA, and the new behaviour was pre-registered and proven:
+
+- **Live measurement re-ran green at 316d9fe** — [run 45244567567](https://github.com/sjgant80-hub/airgap-prover/actions/runs/45244567567),
+  jobs `gate` + `live-measure` both success. The new kernel still produces **offline → CLEAN**
+  and **phone-home → CAUGHT** on freshly host-captured real packets; both re-derive identically.
+- **Air-gap set proven by fixtures** (`fixtures/airgap/`, re-run rail + in-browser):
+  `airgap-silent` (loopback/link-local only) → **CLEAN**; `airgap-leak` (a would-be declared
+  peer `10.9.9.1` + a covert public host, under `mode:"airgap"`) → **CAUGHT** (egress 2).
+  This shows air-gap mode catches what connected mode would admit.
+- **witness CLEAN** at 316d9fe: 102/114 killed, 12 reviewed-equivalent baseline, no new survivors.
+  55 unit tests pass (incl. a page-script parse test).
+
+**Honestly NOT measured live here:** the `external-tap` and `physical-airgap` vantages are
+**kernel-supported and fixture-proven**, not live-measured. A real external capture is a
+two-machine hardware procedure (a separate trusted device tapping the physical link), documented
+on the page — it cannot run on a single CI runner, so **no live silicon-level measurement is
+claimed**. The residual below every software vantage — RF/TEMPEST emanation, hidden radios — is
+hardware's job (remove the radios, Faraday shielding), stated on the tin, not pretended away.
