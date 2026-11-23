@@ -34,14 +34,14 @@ test("every inline <script> on the built page parses", () => {
 
 test("no build-page marker was left unresolved in index.html", () => {
   const html = readFileSync(join(HERE, "index.html"), "utf8");
-  for (const marker of ["/*KERNEL*/", "/*FIXTURES*/", "/*EXPECTED*/", "/*LIVE_FIXTURES*/", "/*LIVE_EXPECTED*/", "/*AIRGAP_FIXTURES*/", "/*AIRGAP_EXPECTED*/"]) {
+  for (const marker of ["/*KERNEL*/", "/*COSTCASE_KERNEL*/", "/*FIXTURES*/", "/*EXPECTED*/", "/*LIVE_FIXTURES*/", "/*LIVE_EXPECTED*/", "/*AIRGAP_FIXTURES*/", "/*AIRGAP_EXPECTED*/"]) {
     assert.ok(!html.includes(marker), "unresolved marker in index.html: " + marker);
   }
 });
 
 test("the built page carries the vantage ladder and air-gap set", () => {
   const html = readFileSync(join(HERE, "index.html"), "utf8");
-  for (const needle of ["external-tap", "physical-airgap", "airgapcards", "AIRGAP_FIXTURES", "Faraday"]) {
+  for (const needle of ["external-tap", "physical-airgap", "airgapcards", "AIRGAP_FIXTURES", "Faraday", "the business case", "costCase(", "AI Native Solutions", "board case"]) {
     assert.ok(html.includes(needle), "built page is missing: " + needle);
   }
 });

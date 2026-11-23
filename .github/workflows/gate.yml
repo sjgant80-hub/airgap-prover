@@ -38,6 +38,14 @@ jobs:
           grep -q '"clean": true' verdict.txt \
             || { echo "::error::mutants survived — the gate is not clean"; exit 1; }
 
+      - name: witness — the buyer cost-case kernel must hold too
+        run: |
+          node /tmp/witness/witness.mjs mutate costcase.mjs \
+            --timeout 60000 --cap 300 \
+            --test node --test costcase.test.mjs | tee verdict-cost.txt
+          grep -q '"clean": true' verdict-cost.txt \
+            || { echo "::error::costcase mutants survived — the gate is not clean"; exit 1; }
+
   # ---- the LIVE measurement: measure egress FROM BELOW on real packets -------
   # This is the un-forgeable proof. It only runs on Linux (ip netns + tcpdump);
   # the CI runner owns the boundary, so the capture cannot be edited by the guest.

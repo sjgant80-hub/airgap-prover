@@ -115,6 +115,22 @@
   .rung .lvd{font-size:14.5px;color:var(--dim);line-height:1.5}
   .rung .lvd b{color:var(--ink)}
   @media (max-width:560px){ .rung{flex-direction:column;gap:4px} .rung .lvl{min-width:0;flex:none} }
+  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:14px 0}
+  .role{background:var(--panel2);border:1px solid var(--border);border-radius:11px;padding:13px 15px}
+  .role h4{margin:0 0 5px;font-size:14px;color:var(--sig)}
+  .role p{margin:0;font-size:13.5px;color:var(--dim);line-height:1.5}
+  .calc{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px;margin:14px 0}
+  .calc .ins{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .calc label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--dim);font-family:var(--mono)}
+  .calc input{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;color:var(--ink);font-size:14px;font-family:var(--mono)}
+  .calc .out{display:flex;flex-wrap:wrap;gap:20px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+  .calc .stat{display:flex;flex-direction:column}
+  .calc .stat .n{font-size:22px;font-weight:700;color:var(--green)}
+  .calc .stat .l{font-size:11px;color:var(--dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+  .calc .basis{margin-top:12px;font-size:12px;color:var(--dim);line-height:1.5}
+  .cmp td,.cmp th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:top}
+  .cmp th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+  .cmp .us{color:var(--green);font-weight:600}
   details{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
   summary{cursor:pointer;font-weight:600} summary:hover{color:var(--sig)}
   footer{color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:22px;text-align:center;line-height:1.9}
@@ -166,6 +182,64 @@
       <div class="rung resid"><div class="lvl">the residual</div><div class="lvd"><b>RF/TEMPEST side-channels and hidden radios</b> — a byte put on no tapped wire — <b>no software can observe</b>. That last inch is hardware: remove the radios, Faraday-shield the room. We say so rather than pretend.</div></div>
     </div>
     <p class="dim">So this is <b>“observed egress zero under a stated vantage”</b>, never “proof of a negative”. The honest win: moving the vantage outside the machine blinds an implant’s <em>wire</em> — and the one gap left is named, not hidden.</p>
+    <details style="margin-top:12px"><summary>How to run the external-tap capture yourself (the two-machine procedure)</summary>
+      <ol>
+        <li>Put the machine under test on a link you can tap: a managed switch with a <b>mirror/SPAN port</b>, or a passive <b>inline network TAP</b>.</li>
+        <li>On a <b>separate trusted device</b> (the tap host — not the machine under test), capture the mirrored/tapped traffic: <code>tcpdump -i &lt;tap-iface&gt; -w capture.pcap</code>.</li>
+        <li>Run the workload on the machine under test for the window you want to assure.</li>
+        <li>On the tap host, render the verdict: <code>node cli.mjs capture.pcap --manifest m.json --vantage external-tap --assert CLEAN</code> (add <code>--airgap</code> for a node that should have no peers at all).</li>
+      </ol>
+      <p class="dim">The capture runs on hardware the machine under test doesn’t control, so an on-host OS / firmware / management-engine implant can’t edit what the tap already saw — <b>provided the bytes cross the tapped link</b>. That proviso, and the RF/TEMPEST residual below it, are the honest limit, stated above.</p>
+    </details>
+  </section>
+
+  <section>
+    <div class="eyebrow">for the buyer — the business case</div>
+    <h2>Prove your air-gapped and sovereign workloads stay silent — with evidence anyone can re-run, not a vendor’s word</h2>
+    <p>If you run AI or compute where data must not leave — defence, healthcare, finance, critical infrastructure, classified or regulated estates — someone has to <b>prove</b> it stayed inside. Today that is a security engineer capturing traffic by hand and writing an attestation auditors have to take on trust. airgap-prover turns that into a <b>re-runnable receipt from your own CI</b>: observed egress, measured from below, that your auditor, your customer, or a regulator can re-derive byte-for-byte themselves.</p>
+    <p class="dim" style="margin-top:4px">We don’t sell you “proof of a negative”, and we don’t hide the limits — the <a href="#" onclick="document.querySelector('.tin').scrollIntoView({behavior:'smooth'});return false">vantage ladder</a> states exactly what each capture point proves and the one residual only hardware closes. A declared peer is an <b>allowlist you choose and audit</b> — egress to it is a decision on the record, not a blind spot; air-gap mode removes the allowlist entirely.</p>
+
+    <div class="roles">
+      <div class="role"><h4>CISO / Head of Security</h4><p>Boundary-protection evidence that doesn’t rest on trust. A positive control proves the check can fail, so a CLEAN verdict means something. The threat model is on the tin — you know exactly what it covers and what needs hardware.</p></div>
+      <div class="role"><h4>Compliance / Auditor</h4><p>Re-runnable, hashed evidence for air-gap and data-egress controls (the kind ISO 27001 A.8 / NIST 800-53 SC-7 boundary-protection reviews ask for). You re-derive the verdict yourself from the pinned capture — no screenshots, no “trust us”. It is <b>evidence for your controls, not a certification of them</b> — the judgement stays yours.</p></div>
+      <div class="role"><h4>CTO / Head of Platform</h4><p>One CI job, zero dependencies, MIT. Drops into the pipeline you already run. The verdict kernel is the same code on CI and on the page — it can’t drift from what’s gated.</p></div>
+      <div class="role"><h4>CFO</h4><p>No licence fee, no per-seat cost, no per-host cloud bill. It replaces recurring manual audit labour with an automated receipt — model the saving below with your own figures.</p></div>
+      <div class="role"><h4>The Board</h4><p>If a workload is ever questioned, you hold proof it couldn’t phone home — generated continuously, verifiable by any third party, owned outright with no vendor lock-in.</p></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:22px">what it takes off your bill — computed from your figures, not ours</div>
+    <h3 style="margin:6px 0 2px">The cost case</h3>
+    <p class="dim" style="margin-top:4px">Set every field to <b>your</b> numbers. The figures are computed here, in your browser, by the same kind of re-runnable kernel as the verdict — nothing is typed as a conclusion. The defaults are an illustrative floor, <b>not</b> a claim about your organisation. airgap-prover itself is MIT: no licence fee.</p>
+    <div class="calc">
+      <div class="ins">
+        <label>workloads to assure<input id="c_workloads" type="number" min="0" step="1" value="10"></label>
+        <label>audit cycles / year<input id="c_cycles" type="number" min="0" step="1" value="4"></label>
+        <label>manual hours / attestation<input id="c_manual" type="number" min="0" step="0.5" value="6"></label>
+        <label>loaded £ / hour<input id="c_rate" type="number" min="0" step="1" value="65"></label>
+      </div>
+      <div class="out" id="c_out"></div>
+      <div class="basis" id="c_basis"></div>
+    </div>
+
+    <div class="eyebrow" style="margin-top:22px">versus what you’d do instead</div>
+    <table class="cmp">
+      <thead><tr><th>approach</th><th>what you pay</th><th>can a third party verify it?</th><th>does your data leave?</th></tr></thead>
+      <tbody>
+        <tr><td>Manual attestation (status quo)</td><td>engineer-hours every cycle, forever</td><td>No — a signed claim</td><td>No, but unprovable</td></tr>
+        <tr><td>Cloud egress-monitoring SaaS</td><td>recurring per-host subscription</td><td>Only inside their console</td><td><b>Yes</b> — metadata to their cloud</td></tr>
+        <tr><td>“Trust us” vendor attestation</td><td>bundled, opaque</td><td>No</td><td>Unknown</td></tr>
+        <tr><td class="us">airgap-prover</td><td class="us">MIT — £0 licence, runs in your CI</td><td class="us">Yes — re-derive the hashed receipt yourself</td><td class="us">No — it stays on your machines</td></tr>
+      </tbody>
+    </table>
+
+    <div class="roles" style="margin-top:22px">
+      <div class="role"><h4>Security &amp; data protection</h4><p>It runs entirely on your infrastructure (your CI / your host). No account, no telemetry, no outbound call — the captures and verdicts never leave your estate. Under UK GDPR there is no processor and no international transfer, because nothing is sent anywhere. The tool reads packet bytes you already captured; it never touches the network.</p></div>
+      <div class="role"><h4>Deployment &amp; roll-out</h4><p>Add the harness + the CI job to one pipeline, pin the witness version, commit the first sealed run. Start with your highest-assurance workload, widen from there. The external-tap / air-gap procedure is documented for the nodes that warrant it.</p></div>
+      <div class="role"><h4>Ownership, support &amp; exit</h4><p>MIT-licensed — it keeps running without us. Supplied by <a href="https://www.ai-nativesolutions.com" target="_blank" rel="noopener">AI Native Solutions</a>; support, SLA and warranty are agreed per deployment in each deployment’s agreement. No lock-in: the code, the kernel and your captures are yours.</p></div>
+      <div class="role"><h4>Risks, answered straight</h4><p>It is <b>not</b> proof of a negative. At the host vantage an OS/firmware/silicon implant below the capture can hide bytes — the honest fix is the external tap, and the last residual (RF/TEMPEST, hidden radios) is hardware’s job. We state this on the page rather than let it surprise an auditor.</p></div>
+    </div>
+
+    <p class="dim" style="margin-top:16px"><b>The one-line board case:</b> for the price of wiring one CI job, every sovereign workload carries continuous, third-party-verifiable proof it couldn’t phone home — owned outright, no vendor, no data leaving the building.</p>
   </section>
 
   <section>
@@ -558,6 +632,85 @@ function ipToString(version, a) {
 }
 
 
+// costcase.mjs — the BUYER's cost case, computed, not typed (zero-dep, Node + browser).
+//
+// airgap-prover does not sell seats. Its saving is the audit-evidence LABOUR it
+// takes off your people: today a security engineer captures traffic, reviews it,
+// and writes an "it made no outbound calls" attestation by hand, per workload,
+// every audit cycle. airgap-prover emits a re-runnable receipt from CI instead.
+//
+// HONEST by construction: every number below is the BUYER's own, entered by the
+// buyer. The DEFAULTS are illustrative floor figures to be replaced with theirs —
+// they are NOT claims about any real organisation, and nothing here is a price
+// for airgap-prover (it is MIT — no licence fee). The figure is COMPUTED from the
+// inputs, never written as a conclusion.
+
+const DEFAULTS = {
+  workloads: 10, // AI / compute workloads that need egress assurance
+  cyclesPerYear: 4, // audit / re-attestation cycles per year
+  manualHours: 6, // engineer-hours to capture + review + attest ONE workload, per cycle
+  rate: 65, // loaded £/hr for the engineer doing it (illustrative floor — set to yours)
+  setupHours: 16, // one-time hours to wire airgap-prover into CI (amortised over 3 years)
+  reviewHours: 0.25, // engineer-hours to glance at ONE auto-generated receipt, per cycle
+};
+
+// Clamp an input to a finite, non-negative number, falling back to a default.
+function num(v, dflt) {
+  const n = typeof v === "number" ? v : parseFloat(v);
+  if (!Number.isFinite(n) || n < 0) return dflt;
+  return n;
+}
+
+// Round to pennies for money, deterministically (no float drift in the output).
+function round2(n) {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+// The cost case. Pure and deterministic: identical inputs -> identical object.
+function costCase(input = {}) {
+  const workloads = num(input.workloads, DEFAULTS.workloads);
+  const cyclesPerYear = num(input.cyclesPerYear, DEFAULTS.cyclesPerYear);
+  const manualHours = num(input.manualHours, DEFAULTS.manualHours);
+  const rate = num(input.rate, DEFAULTS.rate);
+  const setupHours = num(input.setupHours, DEFAULTS.setupHours);
+  const reviewHours = num(input.reviewHours, DEFAULTS.reviewHours);
+
+  const attestations = workloads * cyclesPerYear; // evidence items produced per year
+
+  // Manual today: an engineer does every attestation by hand, every cycle.
+  const manualHoursYear = attestations * manualHours;
+  const manualAnnual = manualHoursYear * rate;
+
+  // With airgap-prover: CI produces the receipt; the engineer only reviews it.
+  // Plus a one-time integration, amortised over three years.
+  const reviewHoursYear = attestations * reviewHours;
+  const setupAnnualised = (setupHours * rate) / 3;
+  const provenAnnual = reviewHoursYear * rate + setupAnnualised;
+
+  const savingAnnual = manualAnnual - provenAnnual;
+  const savingPct = manualAnnual > 0 ? (savingAnnual / manualAnnual) * 100 : 0;
+
+  // The audit labour taken off people, in full-time-equivalents (1 FTE ~ 1600 h/yr
+  // of chargeable audit work — a floor, deliberately conservative).
+  const hoursRemoved = manualHoursYear - reviewHoursYear;
+  const fteRemoved = hoursRemoved / 1600;
+
+  return {
+    inputs: { workloads, cyclesPerYear, manualHours, rate, setupHours, reviewHours },
+    attestations,
+    manualAnnual: round2(manualAnnual),
+    provenAnnual: round2(provenAnnual),
+    savingAnnual: round2(savingAnnual),
+    savingPct: Math.round(savingPct * 10) / 10,
+    hoursRemoved: round2(hoursRemoved),
+    fteRemoved: Math.round(fteRemoved * 100) / 100,
+    basis:
+      "Computed from the inputs above — your own figures. Defaults are an illustrative floor, " +
+      "not a claim about your organisation. airgap-prover is MIT: no licence fee, no per-seat cost.",
+  };
+}
+
+
 const FIXTURES = {"declared-peer.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACQoJCQEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJ/g==","offline.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAngAAD7A/FTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACan+AAUE8VNlAAAAADYAAAA2AAAAAgAAAAACAgAAAAABht1gAAAAAAAGQP0AAAAAAAAAAAAAAAAAAAn9AAAAAAAAAAAAAAAAAAABBfFTZQAAAAA2AAAANgAAAAIAAAAAAgIAAAAAAYbdYAAAAAAABkD9AAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAAAAAAAQ==","phonehome.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAkICAgIA/FTZQAAAAA2AAAANgAAAAIAAAAAAgIAAAAAAYbdYAAAAAAABkD9AAAAAAAAAAAAAAAAAAAJIAFIYEhgAAAAAAAAAACIiA=="};
 const EXPECTED = {"offline.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"0:0:0:0:0:0:0:1","version":6,"class":"local","count":1},{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"169.254.0.5","version":4,"class":"link-local","count":1},{"dst":"224.0.0.251","version":4,"class":"multicast","count":1},{"dst":"fd00:0:0:0:0:0:0:1","version":6,"class":"declared-peer","count":1}],"totalFrames":6,"ipFrames":6,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"phonehome.pcap":{"verdict":"CAUGHT","egressCount":2,"egressFlows":[{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"totalFrames":4,"ipFrames":4,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"declared-peer.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"10.9.9.254","version":4,"class":"declared-peer","count":1}],"totalFrames":2,"ipFrames":2,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"__manifest":{"declaredPeers":["10.9.9.0/24","fd00::/8"]}};
 const LIVE_FIXTURES = {"offline.pcap":"1MOyoQIABAAAAAAAAAAAAAAABAABAAAAneTDatSlDgBWAAAAVgAAADMz/yRWgKIHJyRWgIbdYAAAAAAgOv8AAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAB/yRWgIcAIPoAAAAA/oAAAAAAAACgByf//iRWgA4BpDc5xfvWnuTDauHzAQBaAAAAWgAAADMzAAAAFqIHJyRWgIbdYAAAAAAkAAEAAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwAY5gAAAAEEAAAA/wIAAAAAAAAAAAAB/yRWgJ7kw2rZRQQAVgAAAFYAAAAzM//S0Pq+Uw/S0PqG3WAAAAAAIDr/AAAAAAAAAAAAAAAAAAAAAP8CAAAAAAAAAAAAAf/S0PqHAOn0AAAAAP6AAAAAAAAAvFMP//7S0PoOAXMdCUiZ1p7kw2rWAw8AWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAAB/oAAAAAAAACgByf//iRWgP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8A/bgAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCe5MNq7gMPAEYAAABGAAAAMzMAAAACogcnJFaAht1gAAAAABA6//6AAAAAAAAAoAcn//4kVoD/AgAAAAAAAAAAAAAAAAAChQA/1gAAAAABAaIHJyRWgJ/kw2rCowQAWgAAAFoAAAAzMwAAABa+Uw/S0PqG3WAAAAAAJAAB/oAAAAAAAAC8Uw///tLQ+v8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8AAxwAAAABBAAAAP8CAAAAAAAAAAAAAf/S0Pqf5MNq2KMEAEYAAABGAAAAMzMAAAACvlMP0tD6ht1gAAAAABA6//6AAAAAAAAAvFMP//7S0Pr/AgAAAAAAAAAAAAAAAAAChQBA7QAAAAABAb5TD9LQ+p/kw2pMjwgAWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAAB/oAAAAAAAACgByf//iRWgP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8A/bgAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCf5MNqBMQJAFoAAABaAAAAMzMAAAAWvlMP0tD6ht1gAAAAACQAAf6AAAAAAAAAvFMP//7S0Pr/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAAMcAAAAAQQAAAD/AgAAAAAAAAAAAAH/0tD6","phonehome.pcap":"1MOyoQIABAAAAAAAAAAAAAAABAABAAAAoOTDagzoAQBaAAAAWgAAADMzAAAAFnroe4WN2YbdYAAAAAAkAAEAAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwDhKwAAAAEEAAAA/wIAAAAAAAAAAAAB/4WN2aDkw2qbIgIAWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAABAAAAAAAAAAAAAAAAAAAAAP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8AGOYAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCg5MNqF90KAFYAAABWAAAAMzP/JFaAogcnJFaAht1gAAAAACA6/wAAAAAAAAAAAAAAAAAAAAD/AgAAAAAAAAAAAAH/JFaAhwD2zgAAAAD+gAAAAAAAAKAHJ//+JFaADgGGnDA9TSWg5MNqJ8UOAFYAAABWAAAAMzP/hY3Zeuh7hY3Zht1gAAAAACA6/wAAAAAAAAAAAAAAAAAAAAD/AgAAAAAAAAAAAAH/hY3ZhwCHowAAAAD+gAAAAAAAAHjoe//+hY3ZDgHQ36nmXA6h5MNq59MBAEoAAABKAAAAogcnJFaAeuh7hY3ZCABFAAA8naFAAEAGegAKCQkCCAgICNtUAbsyrQzzAAAAAKAC+vAjSQAAAgQFtAQCCAqN5ZzpAAAAAAEDAwqh5MNqSTsLAFoAAABaAAAAMzMAAAAWogcnJFaAht1gAAAAACQAAf6AAAAAAAAAoAcn//4kVoD/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAP24AAAAAQQAAAD/AgAAAAAAAAAAAAH/JFaAoeTDamQ7CwBGAAAARgAAADMzAAAAAqIHJyRWgIbdYAAAAAAQOv/+gAAAAAAAAKAHJ//+JFaA/wIAAAAAAAAAAAAAAAAAAoUAP9YAAAAAAQGiByckVoCh5MNqFSMPAFoAAABaAAAAMzMAAAAWeuh7hY3Zht1gAAAAACQAAf6AAAAAAAAAeOh7//6Fjdn/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAGFjAAAAAQQAAAD/AgAAAAAAAAAAAAH/hY3ZoeTDaiojDwBGAAAARgAAADMzAAAAAnroe4WN2YbdYAAAAAAQOv/+gAAAAAAAAHjoe//+hY3Z/wIAAAAAAAAAAAAAAAAAAoUAdp8AAAAAAQF66HuFjdmi5MNq0dQBAEoAAABKAAAAogcnJFaAeuh7hY3ZCABFAAA8naJAAEAGef8KCQkCCAgICNtUAbsyrQzzAAAAAKAC+vAjSQAAAgQFtAQCCAqN5aDSAAAAAAEDAwqi5MNqq0UEAFoAAABaAAAAMzMAAAAWeuh7hY3Zht1gAAAAACQAAf6AAAAAAAAAeOh7//6Fjdn/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAGFjAAAAAQQAAAD/AgAAAAAAAAAAAAH/hY3ZouTDat+wBwBaAAAAWgAAADMzAAAAFqIHJyRWgIbdYAAAAAAkAAH+gAAAAAAAAKAHJ//+JFaA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwD9uAAAAAEEAAAA/wIAAAAAAAAAAAAB/yRWgKPkw2p6MgIASgAAAEoAAACiByckVoB66HuFjdkIAEUAADydo0AAQAZ5/goJCQIICAgI21QBuzKtDPMAAAAAoAL68CNJAAACBAW0BAIICo3lpNIAAAAAAQMDCg=="};
@@ -635,6 +788,27 @@ document.getElementById("rerun").addEventListener("click", async () => {
 });
 
 renderAll();
+
+// ---- the cost case, computed in-browser by the inlined costcase kernel ------
+const gbp = (n) => "£" + Math.round(n).toLocaleString("en-GB");
+function renderCost() {
+  const r = costCase({
+    workloads: document.getElementById("c_workloads").value,
+    cyclesPerYear: document.getElementById("c_cycles").value,
+    manualHours: document.getElementById("c_manual").value,
+    rate: document.getElementById("c_rate").value,
+  });
+  document.getElementById("c_out").innerHTML =
+    `<div class="stat"><span class="n">${gbp(r.savingAnnual)}</span><span class="l">saved / year</span></div>` +
+    `<div class="stat"><span class="n">${r.savingPct}%</span><span class="l">of the manual bill</span></div>` +
+    `<div class="stat"><span class="n">${r.fteRemoved}</span><span class="l">FTE of audit labour removed</span></div>` +
+    `<div class="stat"><span class="n" style="color:var(--dim)">${gbp(r.manualAnnual)}</span><span class="l">manual today → ${gbp(r.provenAnnual)} with the receipt</span></div>`;
+  document.getElementById("c_basis").textContent = r.basis;
+}
+for (const id of ["c_workloads", "c_cycles", "c_manual", "c_rate"]) {
+  document.getElementById(id).addEventListener("input", renderCost);
+}
+renderCost();
 </script>
 </body>
 </html>

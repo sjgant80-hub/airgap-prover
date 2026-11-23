@@ -10,9 +10,11 @@ import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-// 1) the kernel, module scaffolding stripped (no imports to remove — it's pure)
+// 1) the kernels, module scaffolding stripped (no imports to remove — both pure)
 let kernel = readFileSync(join(HERE, "egress.mjs"), "utf8");
 kernel = kernel.replace(/^#!.*\r?\n/, "").replace(/\bexport\s+/g, "");
+let costKernel = readFileSync(join(HERE, "costcase.mjs"), "utf8");
+costKernel = costKernel.replace(/^#!.*\r?\n/, "").replace(/\bexport\s+/g, "");
 
 // 2) inline each proof set's pcaps (base64) + its expected.json + manifest
 function loadSet(dir) {
@@ -31,6 +33,7 @@ const airgap = loadSet(join(HERE, "fixtures", "airgap"));
 let html = readFileSync(join(HERE, "page.template.html"), "utf8");
 html = html
   .replace("/*KERNEL*/", kernel)
+  .replace("/*COSTCASE_KERNEL*/", costKernel)
   .replace("/*FIXTURES*/", JSON.stringify(synthetic.fixtures))
   .replace("/*EXPECTED*/", JSON.stringify(synthetic.expected))
   .replace("/*LIVE_FIXTURES*/", JSON.stringify(live.fixtures))
