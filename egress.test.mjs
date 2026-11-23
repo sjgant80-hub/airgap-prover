@@ -19,6 +19,8 @@ import {
   witnessEgress,
   buildReport,
   THREAT_MODEL,
+  VANTAGE,
+  threatModelFor,
   ipToString,
   LOCAL,
   LINKLOCAL,
@@ -318,10 +320,56 @@ test("buildReport defaults absent provenance to null, never undefined", () => {
   assert.equal(r.pcapBytes, null);
 });
 
+// ---- air-gap mode: the allowlist is emptied ---------------------------------
+test("airgap mode empties the declared allowlist: a declared peer becomes egress", () => {
+  const buf = pcap([ipv4Frame("10.9.9.1")]); // inside the declared CIDR
+  // connected: declared -> CLEAN
+  assert.equal(witnessEgress(buf, { declaredPeers: ["10.9.9.0/24"] }).verdict, "CLEAN");
+  // air-gapped: NO peers are declared, so the same packet is caught
+  const w = witnessEgress(buf, { mode: "airgap", declaredPeers: ["10.9.9.0/24"] });
+  assert.equal(w.verdict, "CAUGHT");
+  assert.equal(w.egressCount, 1);
+  assert.equal(w.declaredPeers.length, 0);
+});
+test("airgap mode still passes loopback / link-local (they never leave the link)", () => {
+  const buf = pcap([ipv4Frame("127.0.0.1"), ipv4Frame("169.254.0.5")]);
+  assert.equal(witnessEgress(buf, { mode: "airgap" }).verdict, "CLEAN");
+});
+
+// ---- vantage: each capture point states a DISTINCT, honest threat model ------
+test("threatModelFor returns a distinct string per vantage, each naming its layer", () => {
+  const host = threatModelFor(VANTAGE.HOST_NETNS);
+  const tap = threatModelFor(VANTAGE.EXTERNAL_TAP);
+  const air = threatModelFor(VANTAGE.PHYSICAL_AIRGAP);
+  assert.equal(host, THREAT_MODEL); // default is the same-machine boundary
+  assert.notEqual(tap, host);
+  assert.notEqual(air, host);
+  assert.notEqual(air, tap);
+  // the external tap names WHY it reaches below the host, and its residual
+  assert.ok(/separate trusted device/i.test(tap));
+  assert.ok(/Faraday|RF|radio/i.test(tap));
+  // the air-gap vantage is honest that the last inch is hardware, not software
+  assert.ok(/no software can observe/i.test(air));
+  // an unknown vantage falls back to the honest default, never undefined
+  assert.equal(threatModelFor("nonsense"), THREAT_MODEL);
+});
+test("buildReport stamps the vantage and mode, and picks the matching threat model", () => {
+  const buf = pcap([ipv4Frame("185.220.101.5")]);
+  const r = buildReport(buf, { mode: "airgap" }, { vantage: VANTAGE.EXTERNAL_TAP });
+  assert.equal(r.verdict, "CAUGHT");
+  assert.equal(r.vantage, "external-tap");
+  assert.equal(r.mode, "airgap");
+  assert.equal(r.threatModel, threatModelFor(VANTAGE.EXTERNAL_TAP));
+  // default vantage is host-netns / connected
+  const d = buildReport(pcap([ipv4Frame("10.9.9.1")]), MF);
+  assert.equal(d.vantage, "host-netns");
+  assert.equal(d.mode, "connected");
+});
+
 // ---- the committed fixtures re-derive (the re-run rail, in-process) ---------
 test("every pinned capture re-derives to its expected.json byte-identically", () => {
   const here = dirname(fileURLToPath(import.meta.url));
-  for (const dir of [join(here, "fixtures"), join(here, "fixtures", "live")]) {
+  for (const dir of [join(here, "fixtures"), join(here, "fixtures", "airgap"), join(here, "fixtures", "live")]) {
     const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8"));
     const manifest = expected.__manifest;
     for (const [name, want] of Object.entries(expected)) {

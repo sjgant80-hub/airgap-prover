@@ -7,8 +7,17 @@ airgap-prover is a sovereign, MIT-licensed build by Simon Gant (UK), part of the
 ## What it proves (and does not)
 
 - PROVES: over the capture window, zero packets crossed the host / network-namespace boundary to a routable destination that was not declared. Measured from BELOW the guest (tcpdump on the host side of the veth), so the workload cannot edit packets the host already observed.
-- DOES NOT: it is "observed egress zero under a stated threat model", not "proof of a negative". A kernel- or firmware-level implant below the capture point can move bytes it never sees. L3 (OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed.
+- DOES NOT: it is "observed egress zero under a stated vantage", not "proof of a negative". A kernel- or firmware-level implant below the capture point can move bytes it never sees. The answer is not to evict it (software on a chip cannot) but to move the capture point down and outside — the vantage ladder — and to name what stays out of reach.
 - NOT FOOLED: a phone-home positive control (a socket to 8.8.8.8) is run in the same sealed namespace and must be reported CAUGHT; the gate fails on any false-pass.
+
+## The vantage ladder (silicon-level snooping, answered honestly)
+
+You cannot evict a backdoor fused into silicon with software running on that silicon, and airgap-prover does not claim to. It moves the capture point lower and outside, and names each vantage's reach and residual:
+
+- host-netns: tcpdump on the host, same machine. Reaches the guest/app (L3). An OS/firmware/management-engine implant BELOW it can still move bytes. This is the measured, sealed CI run.
+- external-tap: a separate trusted device on the physical link (mirror port / inline tap). Runs on hardware the suspect silicon does not control, so it witnesses below the OS, firmware and management engine — provided the bytes cross the tapped link. Kernel-supported and fixture-proven; a real external capture is a documented two-machine hardware procedure, not a CI run (no live silicon-level measurement is claimed).
+- physical-airgap: no network link; no declared peers, so any routable packet is CAUGHT the moment an implant tries to speak on a wire. Air-gap mode (`--airgap`) empties the allowlist.
+- residual: emanation on no wire — RF/TEMPEST side-channels, hidden radios — which no software can observe. That last inch is hardware (remove the radios, Faraday shielding), stated plainly.
 
 ## Key pages
 

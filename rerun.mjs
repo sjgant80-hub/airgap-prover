@@ -19,6 +19,7 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 
 const SETS = [
   { label: "synthetic", dir: join(ROOT, "fixtures") },
+  { label: "synthetic air-gap (mode:airgap)", dir: join(ROOT, "fixtures", "airgap") },
   { label: "live (real capture)", dir: join(ROOT, "fixtures", "live") },
 ];
 

@@ -23,7 +23,7 @@ const has = (flag) => process.argv.includes(flag);
 
 const pcapPath = process.argv[2];
 if (!pcapPath || pcapPath.startsWith("--")) {
-  console.error("usage: node cli.mjs <capture.pcap> --manifest <m.json> [--assert CLEAN|CAUGHT]");
+  console.error("usage: node cli.mjs <capture.pcap> --manifest <m.json> [--airgap] [--vantage host-netns|external-tap|physical-airgap] [--assert CLEAN|CAUGHT]");
   process.exit(2);
 }
 
@@ -32,12 +32,20 @@ const manifest = manifestPath ? JSON.parse(readFileSync(manifestPath, "utf8")) :
 const pcapBuf = readFileSync(pcapPath);
 const pcapSha256 = createHash("sha256").update(pcapBuf).digest("hex");
 
-const report = buildReport(pcapBuf, manifest, {
-  workload: arg("--workload"),
-  capturedBy: arg("--capturedBy"),
-  pcapSha256,
-  pcapBytes: pcapBuf.length,
-});
+// --vantage names WHERE the capture was taken (host-netns | external-tap |
+// physical-airgap); it selects the honest threat-model text on the report.
+// --airgap forces mode:"airgap" (empty allowlist) without editing the manifest.
+const report = buildReport(
+  pcapBuf,
+  has("--airgap") ? { ...manifest, mode: "airgap" } : manifest,
+  {
+    workload: arg("--workload"),
+    capturedBy: arg("--capturedBy"),
+    vantage: arg("--vantage"),
+    pcapSha256,
+    pcapBytes: pcapBuf.length,
+  }
+);
 
 if (!has("--quiet")) console.log(JSON.stringify(report, null, 2));
 

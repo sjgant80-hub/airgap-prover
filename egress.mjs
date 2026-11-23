@@ -173,7 +173,16 @@ export function classify(version, dst, declaredPeers) {
 // timestamps, no ordering surprises — observed destinations are returned sorted
 // and de-duplicated so the result is a pure function of what was seen.
 export function witnessEgress(pcapBuf, manifest = {}) {
-  const declared = Array.isArray(manifest.declaredPeers) ? manifest.declaredPeers : [];
+  // Air-gap mode: the node is meant to have NO network at all, so it declares
+  // NO peers — any routable destination observed is egress, even one that would
+  // be an allowed "declared peer" on a connected node. A connected node keeps
+  // its allowlist. (manifest.mode === "airgap")
+  const declared =
+    manifest.mode === "airgap"
+      ? []
+      : Array.isArray(manifest.declaredPeers)
+      ? manifest.declaredPeers
+      : [];
   const records = parsePcap(pcapBuf);
   const seen = new Map(); // key -> { dst, version, class, count }
   let framesWithIp = 0;
@@ -212,17 +221,58 @@ export const THREAT_MODEL =
   "model', not 'proof of a negative'. L3 (OS) and L2 (firmware) are the next layers " +
   "down: adopt-and-prove, not claimed here.";
 
+// ---- vantage: WHERE the capture was taken decides what it can reach below ----
+//
+// The whole defence against a snooping chip is NOT to evict it (software on a
+// chip cannot evict the chip) but to witness the wire from a point the chip does
+// not control, and to state honestly what stays out of reach. The vantage names
+// that point. Moving the capture DOWN and OUTSIDE the suspect machine is what
+// pushes the witness below the OS, the firmware, and finally the silicon.
+export const VANTAGE = {
+  HOST_NETNS: "host-netns", // tcpdump on the host, same machine (L3 boundary)
+  EXTERNAL_TAP: "external-tap", // a separate trusted device on the physical link
+  PHYSICAL_AIRGAP: "physical-airgap", // no link exists; any routable packet = caught
+};
+
+const THREAT_MODEL_EXTERNAL_TAP =
+  "Egress is observed by a SEPARATE trusted device on the physical link (a mirror " +
+  "port or inline tap), not by the machine under test. Because the capture runs on " +
+  "hardware the suspect silicon does not control, it witnesses packets an on-host " +
+  "implant in the OS kernel, firmware or management engine would hide — PROVIDED " +
+  "those packets cross the tapped link. Residual, and stated plainly: a byte the " +
+  "implant never puts on this link — a second radio, a cellular baseband, an RF " +
+  "side-channel — is unseen here. Close those with hardware (remove the radio, a " +
+  "Faraday enclosure), not software.";
+
+const THREAT_MODEL_PHYSICAL_AIRGAP =
+  "The node is meant to have NO network link at all, so it declares NO peers and " +
+  "ANY routable packet observed is CAUGHT. Captured from an external tap, this " +
+  "witnesses an on-host implant the moment it tries to speak on a wire. The only " +
+  "residual is emanation carried on NO wire — RF/TEMPEST side-channels and hidden " +
+  "radios — which no software can observe. That last inch is hardware: remove the " +
+  "radios, shield the room.";
+
+// The honest threat model for a given capture vantage.
+export function threatModelFor(vantage) {
+  if (vantage === VANTAGE.EXTERNAL_TAP) return THREAT_MODEL_EXTERNAL_TAP;
+  if (vantage === VANTAGE.PHYSICAL_AIRGAP) return THREAT_MODEL_PHYSICAL_AIRGAP;
+  return THREAT_MODEL; // host-netns — the default, same-machine boundary
+}
+
 // Assemble the re-runnable report from captured bytes + manifest + provenance.
 // Pure and deterministic: identical (pcapBuf, manifest, meta) -> identical object.
 // `meta` carries provenance computed by the caller (hashes are I/O): pcapSha256,
 // pcapBytes, workload (its name + source sha256), capturedBy, window.
 export function buildReport(pcapBuf, manifest = {}, meta = {}) {
   const w = witnessEgress(pcapBuf, manifest);
+  const vantage = meta.vantage || VANTAGE.HOST_NETNS;
   return {
     tool: "airgap-prover",
     verdict: w.verdict,
     egressCount: w.egressCount,
-    threatModel: THREAT_MODEL,
+    vantage,
+    mode: manifest.mode === "airgap" ? "airgap" : "connected",
+    threatModel: threatModelFor(vantage),
     workload: meta.workload || null,
     capturedBy: meta.capturedBy || null,
     pcapSha256: meta.pcapSha256 || null,

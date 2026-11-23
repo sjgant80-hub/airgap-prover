@@ -21,9 +21,30 @@ it re-derives the verdicts from the pinned captures in your browser.
 - **Proves:** over the capture window, **zero packets** crossed the host / network-namespace
   boundary to a routable destination that was **not declared**. Measured from **below** the guest
   — `tcpdump` on the host side of the veth — so the workload cannot edit packets the host already saw.
-- **Does not:** it is **"observed egress zero under a stated threat model"**, not "proof of a
+- **Does not:** it is **"observed egress zero under a stated vantage"**, not "proof of a
   negative". A kernel- or firmware-level implant **below** the capture point can move bytes it never
-  sees. L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here.
+  sees. The answer is not to evict it (software on a chip can't) but to **move the capture point down
+  and outside** — the vantage ladder below — and to **name** what stays out of reach.
+
+## The vantage ladder — how far below the snooping you can witness
+
+You can't evict a backdoor fused into silicon with software running on that silicon. So airgap-prover
+doesn't claim to. It moves the **capture point** down and outside, layer by layer, and states exactly
+what each vantage reaches and what it still cannot. Each rung pushes the witness below the one above.
+
+| Vantage | Where the capture runs | Reaches below | Residual |
+|---|---|---|---|
+| `host-netns` | tcpdump on the host, **same machine** | the guest / app (L3) | an OS / firmware / ME implant **below** this point |
+| `external-tap` | a **separate trusted device** on the physical link (mirror port / inline tap) | the OS, firmware **and** management engine — *if the bytes cross the tapped link* | a byte put on **no** tapped wire (hidden radio, RF side-channel) |
+| `physical-airgap` | no network link exists; **no declared peers**, so any routable packet is CAUGHT | an implant the moment it tries to speak on a wire | emanation on **no** wire — RF/TEMPEST, hidden radios |
+| *the residual* | — | — | **hardware's job**: remove the radios, Faraday-shield. We say so, not pretend. |
+
+- **`host-netns`** is the measured, sealed run on CI today.
+- **`external-tap`** and **`physical-airgap`** are **kernel-supported and fixture-proven** here (see
+  `fixtures/airgap/`). A real external capture is a **two-machine hardware procedure**, documented — not a
+  CI run — so this repo does **not** claim a live silicon-level measurement it cannot re-derive.
+- **Air-gap mode** (`mode:"airgap"`, or `--airgap`) empties the declared-peer allowlist: on a node that
+  is meant to have no network, **any** routable destination — even one a connected node would admit — is egress.
 - **Not fooled:** a phone-home **positive control** (a socket to `8.8.8.8`) runs in the same sealed
   namespace and must report **CAUGHT**; the gate fails on any false-pass.
 
@@ -49,9 +70,9 @@ the real pcaps + reports).
 ## Run it
 
 ```bash
-node --test egress.test.mjs      # the kernel against its falsifiable boundaries
-node rerun.mjs                   # the re-run rail: fixtures re-derive to expected.json
-node build-page.mjs              # inline the real kernel into index.html
+node --test                      # the kernel + page scripts against their falsifiable boundaries
+node rerun.mjs                   # the re-run rail: fixtures re-derive to expected.json (incl. airgap/)
+node build-page.mjs              # inline the real kernel + all 3 capture sets into index.html
 node scripts/serve.mjs           # preview the live page locally
 
 # the live measurement (Linux only):
@@ -59,6 +80,10 @@ sudo ./harness/run-namespace.sh offline   out
 node cli.mjs out/offline.pcap   --manifest harness/manifest.json --assert CLEAN
 sudo ./harness/run-namespace.sh phonehome out
 node cli.mjs out/phonehome.pcap --manifest harness/manifest.json --assert CAUGHT
+
+# air-gapped node (no declared peers) captured from an external tap:
+#   --airgap  empties the allowlist · --vantage  labels the capture point + its threat model
+node cli.mjs capture.pcap --manifest harness/manifest.json --airgap --vantage external-tap --assert CLEAN
 ```
 
 ## Files

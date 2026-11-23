@@ -25,6 +25,7 @@ function loadSet(dir) {
 }
 const synthetic = loadSet(join(HERE, "fixtures"));
 const live = loadSet(join(HERE, "fixtures", "live"));
+const airgap = loadSet(join(HERE, "fixtures", "airgap"));
 
 // 3) inject into the template at raw-text markers (no string escaping of code)
 let html = readFileSync(join(HERE, "page.template.html"), "utf8");
@@ -33,9 +34,11 @@ html = html
   .replace("/*FIXTURES*/", JSON.stringify(synthetic.fixtures))
   .replace("/*EXPECTED*/", JSON.stringify(synthetic.expected))
   .replace("/*LIVE_FIXTURES*/", JSON.stringify(live.fixtures))
-  .replace("/*LIVE_EXPECTED*/", JSON.stringify(live.expected));
+  .replace("/*LIVE_EXPECTED*/", JSON.stringify(live.expected))
+  .replace("/*AIRGAP_FIXTURES*/", JSON.stringify(airgap.fixtures))
+  .replace("/*AIRGAP_EXPECTED*/", JSON.stringify(airgap.expected));
 
 writeFileSync(join(HERE, "index.html"), html);
 console.log(
-  `built index.html (kernel ${kernel.length}B, ${Object.keys(synthetic.fixtures).length} synthetic + ${Object.keys(live.fixtures).length} live captures inlined)`
+  `built index.html (kernel ${kernel.length}B, ${Object.keys(synthetic.fixtures).length} synthetic + ${Object.keys(airgap.fixtures).length} air-gap + ${Object.keys(live.fixtures).length} live captures inlined)`
 );

@@ -1,0 +1,77 @@
+{
+ "airgap-silent.pcap": {
+  "verdict": "CLEAN",
+  "egressCount": 0,
+  "egressFlows": [],
+  "observed": [
+   {
+    "dst": "0:0:0:0:0:0:0:1",
+    "version": 6,
+    "class": "local",
+    "count": 1
+   },
+   {
+    "dst": "127.0.0.1",
+    "version": 4,
+    "class": "local",
+    "count": 1
+   },
+   {
+    "dst": "169.254.0.5",
+    "version": 4,
+    "class": "link-local",
+    "count": 1
+   }
+  ],
+  "totalFrames": 3,
+  "ipFrames": 3,
+  "declaredPeers": []
+ },
+ "airgap-leak.pcap": {
+  "verdict": "CAUGHT",
+  "egressCount": 2,
+  "egressFlows": [
+   {
+    "dst": "10.9.9.1",
+    "version": 4,
+    "class": "egress",
+    "count": 1
+   },
+   {
+    "dst": "185.220.101.5",
+    "version": 4,
+    "class": "egress",
+    "count": 1
+   }
+  ],
+  "observed": [
+   {
+    "dst": "10.9.9.1",
+    "version": 4,
+    "class": "egress",
+    "count": 1
+   },
+   {
+    "dst": "127.0.0.1",
+    "version": 4,
+    "class": "local",
+    "count": 1
+   },
+   {
+    "dst": "185.220.101.5",
+    "version": 4,
+    "class": "egress",
+    "count": 1
+   }
+  ],
+  "totalFrames": 3,
+  "ipFrames": 3,
+  "declaredPeers": []
+ },
+ "__manifest": {
+  "mode": "airgap",
+  "declaredPeers": [
+   "10.9.9.0/24"
+  ]
+ }
+}

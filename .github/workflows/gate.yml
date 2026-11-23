@@ -10,8 +10,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
 
-      - name: the egress kernel against its falsifiable boundaries
-        run: node --test egress.test.mjs
+      - name: the egress kernel + page scripts against their falsifiable boundaries
+        run: node --test
 
       - name: the synthetic fixtures regenerate byte-identically (determinism)
         run: |

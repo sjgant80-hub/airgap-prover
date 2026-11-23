@@ -38,7 +38,12 @@
         {
           "@type": "Question",
           "name": "What can it NOT see?",
-          "acceptedAnswer": { "@type": "Answer", "text": "A kernel-level or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here." }
+          "acceptedAnswer": { "@type": "Answer", "text": "At the host-netns vantage, a kernel-level or firmware-level implant below the capture point can move bytes this never observes. The fix is to move the capture point down and outside along the vantage ladder: an external tap on the physical link witnesses below the OS, firmware and management engine. The final residual, named not hidden, is emanation on no wire at all — RF/TEMPEST side-channels and hidden radios — which no software can observe; that last inch is hardware." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can airgap-prover stop state-level or chip-level snooping?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Not by evicting it — software running on a chip cannot remove what is fused into that chip, and airgap-prover does not claim to. It witnesses the wire from a vantage the chip does not control: an external tap on the physical link, below the OS, firmware and management engine; and on an air-gapped node (no declared peers) it catches any routable packet the moment an implant tries to speak. An implant that never puts a byte on the tapped wire stays out of reach — that is hardware's job (remove the radio, Faraday shielding)." }
         },
         {
           "@type": "Question",
@@ -102,6 +107,14 @@
   code{font-family:var(--mono);font-size:12.5px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
   .tin{border-color:color-mix(in srgb,var(--gold) 45%,var(--border))}
   .tin h2{color:var(--gold)}
+  .ladder{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+  .rung{display:flex;gap:14px;align-items:flex-start;background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:12px 14px}
+  .rung.resid{border-left-color:var(--red)}
+  .rung .lvl{font-family:var(--mono);font-size:12px;color:var(--ink);min-width:116px;flex:0 0 116px;letter-spacing:.02em;padding-top:2px}
+  .rung.resid .lvl{color:var(--red)}
+  .rung .lvd{font-size:14.5px;color:var(--dim);line-height:1.5}
+  .rung .lvd b{color:var(--ink)}
+  @media (max-width:560px){ .rung{flex-direction:column;gap:4px} .rung .lvl{min-width:0;flex:none} }
   details{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
   summary{cursor:pointer;font-weight:600} summary:hover{color:var(--sig)}
   footer{color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:22px;text-align:center;line-height:1.9}
@@ -135,11 +148,24 @@
     <div class="cards" id="livecards"></div>
   </section>
 
+  <section>
+    <div class="eyebrow">the stricter stance — a node meant to have NO network</div>
+    <h2>Air-gap mode → any routable packet is caught</h2>
+    <p class="dim" style="margin-top:6px">An air-gapped node has <b>no declared peers</b>: the allowlist is emptied (<code>mode:"airgap"</code>), so <b>any</b> routable destination — even one a connected node would wave through — is egress. The leak control below beacons to <code>10.9.9.1</code> (a would-be declared peer) <em>and</em> a covert public host; both are caught. Same kernel, re-derived in your browser.</p>
+    <div class="cards" id="airgapcards"></div>
+  </section>
+
   <section class="tin">
-    <div class="eyebrow">honest threat model — on the tin</div>
-    <h2>What this sees, and what it cannot</h2>
-    <p>Egress is observed at the <b>host / network-namespace boundary</b> over the capture window, by <code>tcpdump</code> on the host side of the veth. The guest cannot edit packets the host already saw — that is why the measurement is from below.</p>
-    <p class="dim">A <b>kernel-level or firmware-level implant below this capture point</b> can move bytes this never sees. So this is <b>“observed egress zero under a stated threat model”</b>, never “proof of a negative”. L3 (the OS) and L2 (firmware) are the next layers down: adopt-and-prove, not claimed here.</p>
+    <div class="eyebrow">honest threat model — the vantage ladder</div>
+    <h2>You can’t evict a snooping chip. You can witness the wire from where the chip can’t reach — and name what stays out of reach.</h2>
+    <p>Software running on a chip cannot remove what is fused into that chip, so airgap-prover does not claim to. It does the one honest thing instead: it moves the <b>capture point</b> down and outside, and states exactly what each vantage reaches and what it still cannot. Each rung pushes the witness below the one above it.</p>
+    <div class="ladder">
+      <div class="rung"><div class="lvl">host-netns</div><div class="lvd"><b>tcpdump on the host, same machine.</b> Sees what the host OS sees. An implant in the OS kernel, firmware or management engine — <b>below</b> this — can move bytes it never sees. This is the measured, sealed run on CI today.</div></div>
+      <div class="rung"><div class="lvl">external-tap</div><div class="lvd"><b>A separate trusted device on the physical link</b> (mirror port or inline tap). It runs on hardware the suspect silicon doesn’t control, so it witnesses packets an on-host OS / firmware / management-engine implant would hide — <b>provided they cross the tapped link</b>. Kernel-supported and fixture-proven here; a real external capture is a two-machine hardware procedure, documented — not a CI run, so we don’t claim a live silicon-level measurement we can’t re-derive.</div></div>
+      <div class="rung"><div class="lvl">physical-airgap</div><div class="lvd"><b>No network link exists.</b> No peers are declared, so <b>any</b> routable packet is CAUGHT the moment an implant tries to speak on a wire.</div></div>
+      <div class="rung resid"><div class="lvl">the residual</div><div class="lvd"><b>RF/TEMPEST side-channels and hidden radios</b> — a byte put on no tapped wire — <b>no software can observe</b>. That last inch is hardware: remove the radios, Faraday-shield the room. We say so rather than pretend.</div></div>
+    </div>
+    <p class="dim">So this is <b>“observed egress zero under a stated vantage”</b>, never “proof of a negative”. The honest win: moving the vantage outside the machine blinds an implant’s <em>wire</em> — and the one gap left is named, not hidden.</p>
   </section>
 
   <section>
@@ -162,7 +188,11 @@
     <details open><summary>What does airgap-prover actually prove?</summary>
       <p class="dim">That over the capture window, zero packets crossed the host / namespace boundary to a routable destination that was not declared. It is measured from below the guest, so the workload cannot edit the packets the host already observed. It is “observed egress zero under a stated threat model”, not “proof of a negative”.</p></details>
     <details><summary>What can it NOT see?</summary>
-      <p class="dim">A kernel- or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here.</p></details>
+      <p class="dim">At the host-netns vantage, a kernel- or firmware-level implant <b>below</b> the capture point can move bytes this never observes. The fix is to move the capture point down and outside — see the vantage ladder above. The final residual, named not hidden, is emanation on no wire at all (RF/TEMPEST, hidden radios), which no software can observe.</p></details>
+    <details><summary>Can this stop state-level or chip-level snooping?</summary>
+      <p class="dim">Not by evicting it — software on a chip cannot remove what is fused into the chip, and we don’t claim to. What it does: witness the wire from a vantage the chip doesn’t control (an external tap on the physical link, below the OS / firmware / management engine), and on an air-gapped node catch <b>any</b> routable packet the moment an implant tries to speak. An implant that never puts a byte on the tapped wire (a hidden radio, an RF side-channel) stays out of reach — that last inch is hardware (remove the radio, Faraday-shield), and we say so.</p></details>
+    <details><summary>What is “air-gap mode”?</summary>
+      <p class="dim">A node meant to have no network declares no peers, so the allowlist is emptied and any routable destination is egress — even one a connected node would admit as a declared peer. The air-gap card set above re-derives a silent run (CLEAN) and a leak control (CAUGHT) in your browser.</p></details>
     <details><summary>How is the proof re-runnable?</summary>
       <p class="dim">The report carries the sha256 of exactly the capture observed. The verdict kernel is deterministic, so anyone can re-run it over the same pcap and derive the same verdict. CI re-derives both the synthetic fixtures and the real namespace captures on every push.</p></details>
     <details><summary>How do you know the prover is not just always saying CLEAN?</summary>
@@ -184,6 +214,8 @@ const FIXTURES = /*FIXTURES*/;
 const EXPECTED = /*EXPECTED*/;
 const LIVE_FIXTURES = /*LIVE_FIXTURES*/;
 const LIVE_EXPECTED = /*LIVE_EXPECTED*/;
+const AIRGAP_FIXTURES = /*AIRGAP_FIXTURES*/;
+const AIRGAP_EXPECTED = /*AIRGAP_EXPECTED*/;
 
 // theme toggle (defaults to OS; click flips and persists for this viewer)
 const root = document.documentElement;
@@ -240,7 +272,8 @@ async function renderSet(fixtures, expected, mountId) {
 async function renderAll() {
   const a = await renderSet(FIXTURES, EXPECTED, "cards");
   const b = await renderSet(LIVE_FIXTURES, LIVE_EXPECTED, "livecards");
-  return a && b;
+  const c = await renderSet(AIRGAP_FIXTURES, AIRGAP_EXPECTED, "airgapcards");
+  return a && b && c;
 }
 
 document.getElementById("rerun").addEventListener("click", async () => {

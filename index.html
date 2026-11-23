@@ -38,7 +38,12 @@
         {
           "@type": "Question",
           "name": "What can it NOT see?",
-          "acceptedAnswer": { "@type": "Answer", "text": "A kernel-level or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here." }
+          "acceptedAnswer": { "@type": "Answer", "text": "At the host-netns vantage, a kernel-level or firmware-level implant below the capture point can move bytes this never observes. The fix is to move the capture point down and outside along the vantage ladder: an external tap on the physical link witnesses below the OS, firmware and management engine. The final residual, named not hidden, is emanation on no wire at all — RF/TEMPEST side-channels and hidden radios — which no software can observe; that last inch is hardware." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can airgap-prover stop state-level or chip-level snooping?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Not by evicting it — software running on a chip cannot remove what is fused into that chip, and airgap-prover does not claim to. It witnesses the wire from a vantage the chip does not control: an external tap on the physical link, below the OS, firmware and management engine; and on an air-gapped node (no declared peers) it catches any routable packet the moment an implant tries to speak. An implant that never puts a byte on the tapped wire stays out of reach — that is hardware's job (remove the radio, Faraday shielding)." }
         },
         {
           "@type": "Question",
@@ -102,6 +107,14 @@
   code{font-family:var(--mono);font-size:12.5px;background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
   .tin{border-color:color-mix(in srgb,var(--gold) 45%,var(--border))}
   .tin h2{color:var(--gold)}
+  .ladder{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+  .rung{display:flex;gap:14px;align-items:flex-start;background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:12px 14px}
+  .rung.resid{border-left-color:var(--red)}
+  .rung .lvl{font-family:var(--mono);font-size:12px;color:var(--ink);min-width:116px;flex:0 0 116px;letter-spacing:.02em;padding-top:2px}
+  .rung.resid .lvl{color:var(--red)}
+  .rung .lvd{font-size:14.5px;color:var(--dim);line-height:1.5}
+  .rung .lvd b{color:var(--ink)}
+  @media (max-width:560px){ .rung{flex-direction:column;gap:4px} .rung .lvl{min-width:0;flex:none} }
   details{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
   summary{cursor:pointer;font-weight:600} summary:hover{color:var(--sig)}
   footer{color:var(--dim);font-family:var(--mono);font-size:11px;margin-top:22px;text-align:center;line-height:1.9}
@@ -135,11 +148,24 @@
     <div class="cards" id="livecards"></div>
   </section>
 
+  <section>
+    <div class="eyebrow">the stricter stance — a node meant to have NO network</div>
+    <h2>Air-gap mode → any routable packet is caught</h2>
+    <p class="dim" style="margin-top:6px">An air-gapped node has <b>no declared peers</b>: the allowlist is emptied (<code>mode:"airgap"</code>), so <b>any</b> routable destination — even one a connected node would wave through — is egress. The leak control below beacons to <code>10.9.9.1</code> (a would-be declared peer) <em>and</em> a covert public host; both are caught. Same kernel, re-derived in your browser.</p>
+    <div class="cards" id="airgapcards"></div>
+  </section>
+
   <section class="tin">
-    <div class="eyebrow">honest threat model — on the tin</div>
-    <h2>What this sees, and what it cannot</h2>
-    <p>Egress is observed at the <b>host / network-namespace boundary</b> over the capture window, by <code>tcpdump</code> on the host side of the veth. The guest cannot edit packets the host already saw — that is why the measurement is from below.</p>
-    <p class="dim">A <b>kernel-level or firmware-level implant below this capture point</b> can move bytes this never sees. So this is <b>“observed egress zero under a stated threat model”</b>, never “proof of a negative”. L3 (the OS) and L2 (firmware) are the next layers down: adopt-and-prove, not claimed here.</p>
+    <div class="eyebrow">honest threat model — the vantage ladder</div>
+    <h2>You can’t evict a snooping chip. You can witness the wire from where the chip can’t reach — and name what stays out of reach.</h2>
+    <p>Software running on a chip cannot remove what is fused into that chip, so airgap-prover does not claim to. It does the one honest thing instead: it moves the <b>capture point</b> down and outside, and states exactly what each vantage reaches and what it still cannot. Each rung pushes the witness below the one above it.</p>
+    <div class="ladder">
+      <div class="rung"><div class="lvl">host-netns</div><div class="lvd"><b>tcpdump on the host, same machine.</b> Sees what the host OS sees. An implant in the OS kernel, firmware or management engine — <b>below</b> this — can move bytes it never sees. This is the measured, sealed run on CI today.</div></div>
+      <div class="rung"><div class="lvl">external-tap</div><div class="lvd"><b>A separate trusted device on the physical link</b> (mirror port or inline tap). It runs on hardware the suspect silicon doesn’t control, so it witnesses packets an on-host OS / firmware / management-engine implant would hide — <b>provided they cross the tapped link</b>. Kernel-supported and fixture-proven here; a real external capture is a two-machine hardware procedure, documented — not a CI run, so we don’t claim a live silicon-level measurement we can’t re-derive.</div></div>
+      <div class="rung"><div class="lvl">physical-airgap</div><div class="lvd"><b>No network link exists.</b> No peers are declared, so <b>any</b> routable packet is CAUGHT the moment an implant tries to speak on a wire.</div></div>
+      <div class="rung resid"><div class="lvl">the residual</div><div class="lvd"><b>RF/TEMPEST side-channels and hidden radios</b> — a byte put on no tapped wire — <b>no software can observe</b>. That last inch is hardware: remove the radios, Faraday-shield the room. We say so rather than pretend.</div></div>
+    </div>
+    <p class="dim">So this is <b>“observed egress zero under a stated vantage”</b>, never “proof of a negative”. The honest win: moving the vantage outside the machine blinds an implant’s <em>wire</em> — and the one gap left is named, not hidden.</p>
   </section>
 
   <section>
@@ -162,7 +188,11 @@
     <details open><summary>What does airgap-prover actually prove?</summary>
       <p class="dim">That over the capture window, zero packets crossed the host / namespace boundary to a routable destination that was not declared. It is measured from below the guest, so the workload cannot edit the packets the host already observed. It is “observed egress zero under a stated threat model”, not “proof of a negative”.</p></details>
     <details><summary>What can it NOT see?</summary>
-      <p class="dim">A kernel- or firmware-level implant below the capture point can move bytes this never observes. That is why L3 (the OS) and L2 (firmware) are the next layers down — adopt-and-prove, not claimed here.</p></details>
+      <p class="dim">At the host-netns vantage, a kernel- or firmware-level implant <b>below</b> the capture point can move bytes this never observes. The fix is to move the capture point down and outside — see the vantage ladder above. The final residual, named not hidden, is emanation on no wire at all (RF/TEMPEST, hidden radios), which no software can observe.</p></details>
+    <details><summary>Can this stop state-level or chip-level snooping?</summary>
+      <p class="dim">Not by evicting it — software on a chip cannot remove what is fused into the chip, and we don’t claim to. What it does: witness the wire from a vantage the chip doesn’t control (an external tap on the physical link, below the OS / firmware / management engine), and on an air-gapped node catch <b>any</b> routable packet the moment an implant tries to speak. An implant that never puts a byte on the tapped wire (a hidden radio, an RF side-channel) stays out of reach — that last inch is hardware (remove the radio, Faraday-shield), and we say so.</p></details>
+    <details><summary>What is “air-gap mode”?</summary>
+      <p class="dim">A node meant to have no network declares no peers, so the allowlist is emptied and any routable destination is egress — even one a connected node would admit as a declared peer. The air-gap card set above re-derives a silent run (CLEAN) and a leak control (CAUGHT) in your browser.</p></details>
     <details><summary>How is the proof re-runnable?</summary>
       <p class="dim">The report carries the sha256 of exactly the capture observed. The verdict kernel is deterministic, so anyone can re-run it over the same pcap and derive the same verdict. CI re-derives both the synthetic fixtures and the real namespace captures on every push.</p></details>
     <details><summary>How do you know the prover is not just always saying CLEAN?</summary>
@@ -353,7 +383,16 @@ function classify(version, dst, declaredPeers) {
 // timestamps, no ordering surprises — observed destinations are returned sorted
 // and de-duplicated so the result is a pure function of what was seen.
 function witnessEgress(pcapBuf, manifest = {}) {
-  const declared = Array.isArray(manifest.declaredPeers) ? manifest.declaredPeers : [];
+  // Air-gap mode: the node is meant to have NO network at all, so it declares
+  // NO peers — any routable destination observed is egress, even one that would
+  // be an allowed "declared peer" on a connected node. A connected node keeps
+  // its allowlist. (manifest.mode === "airgap")
+  const declared =
+    manifest.mode === "airgap"
+      ? []
+      : Array.isArray(manifest.declaredPeers)
+      ? manifest.declaredPeers
+      : [];
   const records = parsePcap(pcapBuf);
   const seen = new Map(); // key -> { dst, version, class, count }
   let framesWithIp = 0;
@@ -392,17 +431,58 @@ const THREAT_MODEL =
   "model', not 'proof of a negative'. L3 (OS) and L2 (firmware) are the next layers " +
   "down: adopt-and-prove, not claimed here.";
 
+// ---- vantage: WHERE the capture was taken decides what it can reach below ----
+//
+// The whole defence against a snooping chip is NOT to evict it (software on a
+// chip cannot evict the chip) but to witness the wire from a point the chip does
+// not control, and to state honestly what stays out of reach. The vantage names
+// that point. Moving the capture DOWN and OUTSIDE the suspect machine is what
+// pushes the witness below the OS, the firmware, and finally the silicon.
+const VANTAGE = {
+  HOST_NETNS: "host-netns", // tcpdump on the host, same machine (L3 boundary)
+  EXTERNAL_TAP: "external-tap", // a separate trusted device on the physical link
+  PHYSICAL_AIRGAP: "physical-airgap", // no link exists; any routable packet = caught
+};
+
+const THREAT_MODEL_EXTERNAL_TAP =
+  "Egress is observed by a SEPARATE trusted device on the physical link (a mirror " +
+  "port or inline tap), not by the machine under test. Because the capture runs on " +
+  "hardware the suspect silicon does not control, it witnesses packets an on-host " +
+  "implant in the OS kernel, firmware or management engine would hide — PROVIDED " +
+  "those packets cross the tapped link. Residual, and stated plainly: a byte the " +
+  "implant never puts on this link — a second radio, a cellular baseband, an RF " +
+  "side-channel — is unseen here. Close those with hardware (remove the radio, a " +
+  "Faraday enclosure), not software.";
+
+const THREAT_MODEL_PHYSICAL_AIRGAP =
+  "The node is meant to have NO network link at all, so it declares NO peers and " +
+  "ANY routable packet observed is CAUGHT. Captured from an external tap, this " +
+  "witnesses an on-host implant the moment it tries to speak on a wire. The only " +
+  "residual is emanation carried on NO wire — RF/TEMPEST side-channels and hidden " +
+  "radios — which no software can observe. That last inch is hardware: remove the " +
+  "radios, shield the room.";
+
+// The honest threat model for a given capture vantage.
+function threatModelFor(vantage) {
+  if (vantage === VANTAGE.EXTERNAL_TAP) return THREAT_MODEL_EXTERNAL_TAP;
+  if (vantage === VANTAGE.PHYSICAL_AIRGAP) return THREAT_MODEL_PHYSICAL_AIRGAP;
+  return THREAT_MODEL; // host-netns — the default, same-machine boundary
+}
+
 // Assemble the re-runnable report from captured bytes + manifest + provenance.
 // Pure and deterministic: identical (pcapBuf, manifest, meta) -> identical object.
 // `meta` carries provenance computed by the caller (hashes are I/O): pcapSha256,
 // pcapBytes, workload (its name + source sha256), capturedBy, window.
 function buildReport(pcapBuf, manifest = {}, meta = {}) {
   const w = witnessEgress(pcapBuf, manifest);
+  const vantage = meta.vantage || VANTAGE.HOST_NETNS;
   return {
     tool: "airgap-prover",
     verdict: w.verdict,
     egressCount: w.egressCount,
-    threatModel: THREAT_MODEL,
+    vantage,
+    mode: manifest.mode === "airgap" ? "airgap" : "connected",
+    threatModel: threatModelFor(vantage),
     workload: meta.workload || null,
     capturedBy: meta.capturedBy || null,
     pcapSha256: meta.pcapSha256 || null,
@@ -482,6 +562,8 @@ const FIXTURES = {"declared-peer.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAA
 const EXPECTED = {"offline.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"0:0:0:0:0:0:0:1","version":6,"class":"local","count":1},{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"169.254.0.5","version":4,"class":"link-local","count":1},{"dst":"224.0.0.251","version":4,"class":"multicast","count":1},{"dst":"fd00:0:0:0:0:0:0:1","version":6,"class":"declared-peer","count":1}],"totalFrames":6,"ipFrames":6,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"phonehome.pcap":{"verdict":"CAUGHT","egressCount":2,"egressFlows":[{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"2001:4860:4860:0:0:0:0:8888","version":6,"class":"egress","count":1},{"dst":"8.8.8.8","version":4,"class":"egress","count":1}],"totalFrames":4,"ipFrames":4,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"declared-peer.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"10.9.9.1","version":4,"class":"declared-peer","count":1},{"dst":"10.9.9.254","version":4,"class":"declared-peer","count":1}],"totalFrames":2,"ipFrames":2,"declaredPeers":["10.9.9.0/24","fd00::/8"]},"__manifest":{"declaredPeers":["10.9.9.0/24","fd00::/8"]}};
 const LIVE_FIXTURES = {"offline.pcap":"1MOyoQIABAAAAAAAAAAAAAAABAABAAAAneTDatSlDgBWAAAAVgAAADMz/yRWgKIHJyRWgIbdYAAAAAAgOv8AAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAB/yRWgIcAIPoAAAAA/oAAAAAAAACgByf//iRWgA4BpDc5xfvWnuTDauHzAQBaAAAAWgAAADMzAAAAFqIHJyRWgIbdYAAAAAAkAAEAAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwAY5gAAAAEEAAAA/wIAAAAAAAAAAAAB/yRWgJ7kw2rZRQQAVgAAAFYAAAAzM//S0Pq+Uw/S0PqG3WAAAAAAIDr/AAAAAAAAAAAAAAAAAAAAAP8CAAAAAAAAAAAAAf/S0PqHAOn0AAAAAP6AAAAAAAAAvFMP//7S0PoOAXMdCUiZ1p7kw2rWAw8AWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAAB/oAAAAAAAACgByf//iRWgP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8A/bgAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCe5MNq7gMPAEYAAABGAAAAMzMAAAACogcnJFaAht1gAAAAABA6//6AAAAAAAAAoAcn//4kVoD/AgAAAAAAAAAAAAAAAAAChQA/1gAAAAABAaIHJyRWgJ/kw2rCowQAWgAAAFoAAAAzMwAAABa+Uw/S0PqG3WAAAAAAJAAB/oAAAAAAAAC8Uw///tLQ+v8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8AAxwAAAABBAAAAP8CAAAAAAAAAAAAAf/S0Pqf5MNq2KMEAEYAAABGAAAAMzMAAAACvlMP0tD6ht1gAAAAABA6//6AAAAAAAAAvFMP//7S0Pr/AgAAAAAAAAAAAAAAAAAChQBA7QAAAAABAb5TD9LQ+p/kw2pMjwgAWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAAB/oAAAAAAAACgByf//iRWgP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8A/bgAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCf5MNqBMQJAFoAAABaAAAAMzMAAAAWvlMP0tD6ht1gAAAAACQAAf6AAAAAAAAAvFMP//7S0Pr/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAAMcAAAAAQQAAAD/AgAAAAAAAAAAAAH/0tD6","phonehome.pcap":"1MOyoQIABAAAAAAAAAAAAAAABAABAAAAoOTDagzoAQBaAAAAWgAAADMzAAAAFnroe4WN2YbdYAAAAAAkAAEAAAAAAAAAAAAAAAAAAAAA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwDhKwAAAAEEAAAA/wIAAAAAAAAAAAAB/4WN2aDkw2qbIgIAWgAAAFoAAAAzMwAAABaiByckVoCG3WAAAAAAJAABAAAAAAAAAAAAAAAAAAAAAP8CAAAAAAAAAAAAAAAAABY6AAUCAAABAI8AGOYAAAABBAAAAP8CAAAAAAAAAAAAAf8kVoCg5MNqF90KAFYAAABWAAAAMzP/JFaAogcnJFaAht1gAAAAACA6/wAAAAAAAAAAAAAAAAAAAAD/AgAAAAAAAAAAAAH/JFaAhwD2zgAAAAD+gAAAAAAAAKAHJ//+JFaADgGGnDA9TSWg5MNqJ8UOAFYAAABWAAAAMzP/hY3Zeuh7hY3Zht1gAAAAACA6/wAAAAAAAAAAAAAAAAAAAAD/AgAAAAAAAAAAAAH/hY3ZhwCHowAAAAD+gAAAAAAAAHjoe//+hY3ZDgHQ36nmXA6h5MNq59MBAEoAAABKAAAAogcnJFaAeuh7hY3ZCABFAAA8naFAAEAGegAKCQkCCAgICNtUAbsyrQzzAAAAAKAC+vAjSQAAAgQFtAQCCAqN5ZzpAAAAAAEDAwqh5MNqSTsLAFoAAABaAAAAMzMAAAAWogcnJFaAht1gAAAAACQAAf6AAAAAAAAAoAcn//4kVoD/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAP24AAAAAQQAAAD/AgAAAAAAAAAAAAH/JFaAoeTDamQ7CwBGAAAARgAAADMzAAAAAqIHJyRWgIbdYAAAAAAQOv/+gAAAAAAAAKAHJ//+JFaA/wIAAAAAAAAAAAAAAAAAAoUAP9YAAAAAAQGiByckVoCh5MNqFSMPAFoAAABaAAAAMzMAAAAWeuh7hY3Zht1gAAAAACQAAf6AAAAAAAAAeOh7//6Fjdn/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAGFjAAAAAQQAAAD/AgAAAAAAAAAAAAH/hY3ZoeTDaiojDwBGAAAARgAAADMzAAAAAnroe4WN2YbdYAAAAAAQOv/+gAAAAAAAAHjoe//+hY3Z/wIAAAAAAAAAAAAAAAAAAoUAdp8AAAAAAQF66HuFjdmi5MNq0dQBAEoAAABKAAAAogcnJFaAeuh7hY3ZCABFAAA8naJAAEAGef8KCQkCCAgICNtUAbsyrQzzAAAAAKAC+vAjSQAAAgQFtAQCCAqN5aDSAAAAAAEDAwqi5MNqq0UEAFoAAABaAAAAMzMAAAAWeuh7hY3Zht1gAAAAACQAAf6AAAAAAAAAeOh7//6Fjdn/AgAAAAAAAAAAAAAAAAAWOgAFAgAAAQCPAGFjAAAAAQQAAAD/AgAAAAAAAAAAAAH/hY3ZouTDat+wBwBaAAAAWgAAADMzAAAAFqIHJyRWgIbdYAAAAAAkAAH+gAAAAAAAAKAHJ//+JFaA/wIAAAAAAAAAAAAAAAAAFjoABQIAAAEAjwD9uAAAAAEEAAAA/wIAAAAAAAAAAAAB/yRWgKPkw2p6MgIASgAAAEoAAACiByckVoB66HuFjdkIAEUAADydo0AAQAZ5/goJCQIICAgI21QBuzKtDPMAAAAAoAL68CNJAAACBAW0BAIICo3lpNIAAAAAAQMDCg=="};
 const LIVE_EXPECTED = {"__manifest":{"declaredPeers":["10.9.9.0/24"]},"__source":"real host-observed captures, CI run 37352056238 (ip netns + tcpdump, ubuntu-latest)","offline.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"ff02:0:0:0:0:0:0:16","version":6,"class":"multicast","count":5},{"dst":"ff02:0:0:0:0:0:0:2","version":6,"class":"multicast","count":2},{"dst":"ff02:0:0:0:0:1:ff24:5680","version":6,"class":"multicast","count":1},{"dst":"ff02:0:0:0:0:1:ffd2:d0fa","version":6,"class":"multicast","count":1}],"totalFrames":9,"ipFrames":9,"declaredPeers":["10.9.9.0/24"]},"phonehome.pcap":{"verdict":"CAUGHT","egressCount":1,"egressFlows":[{"dst":"8.8.8.8","version":4,"class":"egress","count":3}],"observed":[{"dst":"8.8.8.8","version":4,"class":"egress","count":3},{"dst":"ff02:0:0:0:0:0:0:16","version":6,"class":"multicast","count":6},{"dst":"ff02:0:0:0:0:0:0:2","version":6,"class":"multicast","count":2},{"dst":"ff02:0:0:0:0:1:ff24:5680","version":6,"class":"multicast","count":1},{"dst":"ff02:0:0:0:0:1:ff85:8dd9","version":6,"class":"multicast","count":1}],"totalFrames":13,"ipFrames":13,"declaredPeers":["10.9.9.0/24"]}};
+const AIRGAP_FIXTURES = {"airgap-leak.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJCgkJAQLxU2UAAAAAIgAAACIAAAACAAAAAAICAAAAAAEIAEUAACgAAAAAQAYAAAoAAAm53GUF","airgap-silent.pcap":"1MOyoQIABAAAAAAAAAAAAP//AAABAAAAAPFTZQAAAAAiAAAAIgAAAAIAAAAAAgIAAAAAAQgARQAAKAAAAABABgAACgAACX8AAAEB8VNlAAAAACIAAAAiAAAAAgAAAAACAgAAAAABCABFAAAoAAAAAEAGAAAKAAAJqf4ABQLxU2UAAAAANgAAADYAAAACAAAAAAICAAAAAAGG3WAAAAAAAAZA/QAAAAAAAAAAAAAAAAAACQAAAAAAAAAAAAAAAAAAAAE="};
+const AIRGAP_EXPECTED = {"airgap-silent.pcap":{"verdict":"CLEAN","egressCount":0,"egressFlows":[],"observed":[{"dst":"0:0:0:0:0:0:0:1","version":6,"class":"local","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"169.254.0.5","version":4,"class":"link-local","count":1}],"totalFrames":3,"ipFrames":3,"declaredPeers":[]},"airgap-leak.pcap":{"verdict":"CAUGHT","egressCount":2,"egressFlows":[{"dst":"10.9.9.1","version":4,"class":"egress","count":1},{"dst":"185.220.101.5","version":4,"class":"egress","count":1}],"observed":[{"dst":"10.9.9.1","version":4,"class":"egress","count":1},{"dst":"127.0.0.1","version":4,"class":"local","count":1},{"dst":"185.220.101.5","version":4,"class":"egress","count":1}],"totalFrames":3,"ipFrames":3,"declaredPeers":[]},"__manifest":{"mode":"airgap","declaredPeers":["10.9.9.0/24"]}};
 
 // theme toggle (defaults to OS; click flips and persists for this viewer)
 const root = document.documentElement;
@@ -538,7 +620,8 @@ async function renderSet(fixtures, expected, mountId) {
 async function renderAll() {
   const a = await renderSet(FIXTURES, EXPECTED, "cards");
   const b = await renderSet(LIVE_FIXTURES, LIVE_EXPECTED, "livecards");
-  return a && b;
+  const c = await renderSet(AIRGAP_FIXTURES, AIRGAP_EXPECTED, "airgapcards");
+  return a && b && c;
 }
 
 document.getElementById("rerun").addEventListener("click", async () => {
