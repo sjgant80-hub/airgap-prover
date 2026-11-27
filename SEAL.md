@@ -69,6 +69,12 @@ The kernel grew (commit 316d9fe): a **vantage** field (`host-netns` / `external-
 packet is egress. The original three predictions above were **re-verified unchanged** at
 the new SHA, and the new behaviour was pre-registered and proven:
 
+> **Correction (2026-11-27).** "Pre-registered" above is wrong for the new behaviour. The air-gap
+> fixtures and their expected verdicts were committed in the same commit as the code (316d9fe); no
+> prereg commit preceded them. The air-gap behaviour is **proven by committed fixtures, not
+> pre-registered.** Only the original three predictions (prereg 50a91b0, measured 85b8fc7) were
+> pre-registered. `claims.json` states each claim's registration separately.
+
 - **Live measurement re-ran green at 316d9fe** — [run 45244567567](https://github.com/sjgant80-hub/airgap-prover/actions/runs/45244567567),
   jobs `gate` + `live-measure` both success. The new kernel still produces **offline → CLEAN**
   and **phone-home → CAUGHT** on freshly host-captured real packets; both re-derive identically.
